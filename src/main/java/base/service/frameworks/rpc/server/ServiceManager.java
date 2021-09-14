@@ -76,8 +76,13 @@ public enum  ServiceManager {
             clear();
         }else{
             for(String zkConnectStr:serviceList){
-                update(zkConnectStr);
+                ZkConnectInfo zkConnectInfo = GsonUtil.fromJson(zkConnectStr,ZkConnectInfo.class);
+                update(zkConnectInfo);
             }
+            clientPoolMap.values().forEach(item->{
+                System.out.println(item.toString());
+            });
+            //更新clientPool
             signalAll();
         }
     }
@@ -85,10 +90,8 @@ public enum  ServiceManager {
 
     /**
      * 根据zk更新clientPool的实例
-     * @param zkConnectStr
      */
-    private void update(String zkConnectStr) {
-        ZkConnectInfo zkConnectInfo = GsonUtil.fromJson(zkConnectStr,ZkConnectInfo.class);
+    private void update(ZkConnectInfo zkConnectInfo) {
         String host = zkConnectInfo.getHost();
         int port = zkConnectInfo.getPort();
 
@@ -100,12 +103,6 @@ public enum  ServiceManager {
         }else{
             pool = clientPoolMap.get(serviceKey);
         }
-        for(String tempServiceKey:clientPoolMap.keySet()){
-            //不相等说明当前的client已经被下线
-            if(!tempServiceKey.equals(serviceKey)){
-                //clientPoolMap.remove(tempServiceKey).close();
-            }
-        }
 
         //装配api对应的pool连接节点
         for(ApiFactory.ApiInfo apiInfo:zkConnectInfo.getServices()){
@@ -113,7 +110,6 @@ public enum  ServiceManager {
             if(!apiServiceListMap.containsKey(apiKey)){
                 CopyOnWriteArrayList<ClientPool>clientPoolList = new CopyOnWriteArrayList<>();
                 clientPoolList.add(pool);
-                System.out.println("=======put"+apiKey);
                 apiServiceListMap.put(apiKey,clientPoolList);
             }else{
                 apiServiceListMap.get(apiKey).addIfAbsent(pool);
@@ -154,17 +150,10 @@ public enum  ServiceManager {
         for(int i = 0;i < size; i++){
             int index = (roundRobin.getAndAdd(1) + size) % size;
             ClientPool clientPool = clientPoolList.get(index);
-            logger.info("client.closed = "+clientPool.isClosed() +", idles="+clientPool.getNumIdle() +", actives="+clientPool.getNumActive());
-            if(clientPool.isClosed() && clientPool.getNumIdle() > 0){
+            logger.info("client.closed = "+clientPool.isClosed()+",channel active= "+clientPool.isChannelActive() +", idles="+clientPool.getNumIdle() +", actives="+clientPool.getNumActive());
+            if(clientPool.isInvalid() && clientPool.getNumIdle() > 0){
                 updateApiServiceListMap();
-                //return null;
             }else {
-                logger.info("return pool:size={},index={},obj={}",size,index,GsonUtil.toJson(apiServiceListMap.keySet()));
-                apiServiceListMap.forEach((key,list)->{
-                    list.forEach(pool->{
-                        System.out.println("key:"+key+"\t"+pool.toString()+"\t"+pool.isClosed());
-                    });
-                });
                 return clientPool;
             }
         }
@@ -179,14 +168,14 @@ public enum  ServiceManager {
     private void updateApiServiceListMap(){
         if(updateApiListMap.compareAndSet(false,true)) {
             apiServiceListMap.forEach((key, list)->{
-                apiServiceListMap.get(key).removeIf(ClientPool::isClosed);
+                apiServiceListMap.get(key).removeIf(ClientPool::isInvalid);
                 if(apiServiceListMap.get(key).isEmpty()){
                     apiServiceListMap.remove(key);
                 }
             });
             clientPoolMap.forEach((key,pool)->{
-                if(pool.isClosed()){
-                    clientPoolMap.remove(key);
+                if(pool.isInvalid()){
+                    clientPoolMap.remove(key).close();
                 }
             });
             updateApiListMap.compareAndSet(true,false);

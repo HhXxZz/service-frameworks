@@ -27,6 +27,7 @@ public class  ClientPool {
     private final GenericObjectPool<ClientChannel> objectPool;
     private final int readTimeout;
     private String id;
+    private ClientChannel channel;
 
     public ClientPool(String host, int port,int readTimeout) {
         this.id = UUID.randomUUID().toString();
@@ -42,7 +43,7 @@ public class  ClientPool {
         objectPool = new GenericObjectPool<>(client, poolConfig);
 
         //first init one connection
-        ClientChannel channel = getObject();
+        channel = getObject();
         returnResourceObject(channel);
     }
 
@@ -141,6 +142,18 @@ public class  ClientPool {
         return false;
     }
 
+    /**
+     * 资源池关闭，channel失效时为不可用 自动清除
+     */
+    public boolean isInvalid(){
+        return isClosed() || !isChannelActive();
+    }
+
+
+    public boolean isChannelActive(){
+        return channel.isChannelActive();
+    }
+
 
     public int getNumActive(){
         return objectPool.getNumActive();
@@ -153,7 +166,7 @@ public class  ClientPool {
     @Override
     public String toString() {
         return "ClientPool{" +
-                this.id+
+                this.id+"  "+objectPool.isClosed()+"  "+channel.isChannelActive()+
                 '}';
     }
 }

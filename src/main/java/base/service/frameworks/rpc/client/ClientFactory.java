@@ -17,14 +17,14 @@ public class ClientFactory extends BasePooledObjectFactory<ClientChannel> {
     private static final Logger logger = LoggerFactory.getLogger(ClientFactory.class);
 
     private final BaseRpcClient client;
-
+    private ClientChannel clientChannel;
     public ClientFactory(String host, int port){
         client = new BaseRpcClient(host,port);
     }
 
     @Override
     public ClientChannel create() throws Exception {
-        ClientChannel clientChannel = new ClientChannel();
+        clientChannel = new ClientChannel();
         ChannelFuture channelFuture = client.connect();
         if(channelFuture == null){
             logger.error("BaseRpcClient.connect.channelFuture is null.error");
@@ -71,5 +71,6 @@ public class ClientFactory extends BasePooledObjectFactory<ClientChannel> {
     public void activateObject(PooledObject<ClientChannel> pooledObject) throws Exception {
 
     }
+
 
 }

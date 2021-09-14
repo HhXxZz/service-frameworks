@@ -66,4 +66,8 @@ public class ClientChannel {
         this.channelFuture = channelFuture;
     }
 
+    public boolean isChannelActive(){
+        return channelFuture.channel().isActive();
+    }
+
 }
