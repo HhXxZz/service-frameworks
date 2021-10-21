@@ -1,6 +1,6 @@
 package base.service.frameworks.processor.annotation;
 
-import base.service.frameworks.rpc.zk.ApiFactory;
+import base.service.frameworks.base.ApiFactory;
 
 import java.lang.annotation.*;
 

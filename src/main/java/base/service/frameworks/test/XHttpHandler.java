@@ -1,4 +1,4 @@
-package rpc;
+package base.service.frameworks.test;
 
 import base.service.frameworks.rpc.client.ClientPool;
 import base.service.frameworks.rpc.common.MessageRequest;
@@ -9,7 +9,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,6 @@ import java.util.UUID;
 
 import static base.service.frameworks.utils.ResponseUtil.Content_Type_Text_Plain;
 import static io.netty.handler.codec.http.HttpHeaderNames.*;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
@@ -31,9 +29,11 @@ public class XHttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 	protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
 		boolean keepAlive = HttpUtil.isKeepAlive(msg);
 
-		ClientPool clientPool = ServiceManager.INSTANCE.chooseClient("example","/api/relation/info","1");
+		ClientPool clientPool = ServiceManager.INSTANCE.chooseClient("service");
 		MessageRequest request = new MessageRequest();
 		request.setRequestId(UUID.randomUUID().toString());
+		request.setServiceName("service");
+		request.setApi("");
 		MessageResponse responseStr = clientPool.syncTransport(request);
 
 		FullHttpResponse response = new DefaultFullHttpResponse(

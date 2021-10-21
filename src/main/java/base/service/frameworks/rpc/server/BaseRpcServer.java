@@ -3,8 +3,9 @@ package base.service.frameworks.rpc.server;
 import base.service.frameworks.misc.Config;
 import base.service.frameworks.rpc.common.MessageRequestDecoder;
 import base.service.frameworks.rpc.common.MessageResponseEncoder;
-import base.service.frameworks.rpc.zk.ApiFactory;
-import base.service.frameworks.rpc.zk.ServiceRegistry;
+import base.service.frameworks.base.ApiFactory;
+import base.service.frameworks.rpc.common.ServiceInfo;
+import base.service.frameworks.rpc.nacos.NacosManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -23,9 +24,11 @@ public class BaseRpcServer {
 
     private String host;
     private int port;
+    private ServiceInfo serviceInfo;
 
     public BaseRpcServer(String host,int port){
-        String address = Config.getProperty("zk.address","127.0.0.1:2181,127.0.0.1:3181,127.0.0.1:4181");
+        //String address = Config.getProperty("zk.address","127.0.0.1:2181,127.0.0.1:3181,127.0.0.1:4181");
+        String address = Config.getProperty("zk.address","127.0.0.1:8848");
         String product = Config.getProperty("zk.product","service");
         String business = Config.getProperty("zk.business","example");
 //        this.host = Config.getProperty("server.host","127.0.0.1");
@@ -33,9 +36,23 @@ public class BaseRpcServer {
         this.host = host;
         this.port = port;
 
-        ApiFactory.INSTANCE.init(product,business,host,port,"base.service.frameworks.processor");
-        ServiceRegistry serviceRegistry = new ServiceRegistry(host,port,product,business,address);
-        serviceRegistry.register();
+        serviceInfo = new ServiceInfo();
+        serviceInfo.setServerAddress(address);
+        serviceInfo.setHost(host);
+        serviceInfo.setPort(port);
+        serviceInfo.setServiceName(product);
+
+//        serviceInfo.setProduct(product);
+//        serviceInfo.setModule(business);
+
+        ApiFactory.INSTANCE.init(serviceInfo,"base.service.frameworks.processor");
+        serviceInfo.setApiList(ApiFactory.INSTANCE.getApiList());
+
+//        ServiceRegistry serviceRegistry = new ServiceRegistry(serviceInfo);
+//        serviceRegistry.register();
+
+        NacosManager.INSTANCE.init(address);
+        NacosManager.INSTANCE.register(serviceInfo);
 
     }
 

@@ -1,12 +1,30 @@
 package base.service.frameworks.rpc.common;
 
+import base.service.frameworks.misc.Parameters;
+
 import java.util.Map;
 
 public class MessageRequest {
     private String requestId;
-    private String module;
-    private String action;
-    private Map<String, String> parameters;
+    private String serviceName;
+	private String api;
+	private Parameters params;
+
+	public String getServiceName() {
+		return serviceName;
+	}
+
+	public void setServiceName(String serviceName) {
+		this.serviceName = serviceName;
+	}
+
+	public String getApi() {
+		return api;
+	}
+
+	public void setApi(String api) {
+		this.api = api;
+	}
 
 	public String getRequestId() {
 		return requestId;
@@ -14,35 +32,26 @@ public class MessageRequest {
 	public void setRequestId(String requestId) {
 		this.requestId = requestId;
 	}
-	public String getModule() {
-		return module;
+
+
+	public Parameters getParams() {
+		return params;
 	}
-	public void setModule(String module) {
-		this.module = module;
+
+	public void setParams(Parameters params) {
+		this.params = params;
 	}
-	public String getAction() {
-		return action;
-	}
-	public void setAction(String action) {
-		this.action = action;
-	}
-	public Map<String, String> getParameters() {
-		return parameters;
-	}
-	public void setParameters(Map<String, String> parameters) {
-		this.parameters = parameters;
-	}
-	
+
 	@Override
 	public String toString(){
 		return "MessageRequest[requestId=" +
-				requestId +
-				", module=" +
-				module +
-				", action=" +
-				action +
+				this.requestId +
+				", serviceName=" +
+				serviceName +
+				", api=" +
+				api +
 				", parameters=" +
-				parameters +
+				params.toString() +
 				"]";
 	}
 

@@ -136,7 +136,7 @@ public class Authentication {
             throw new RuntimeException("IAuthenticationToken must not be null");
         }
 
-        Map<String, String> headers = pParams.getHeaderParam();
+        Map<String, String> headers = null;//pParams.getHeaderParam();
         String              body    = pParams.getBody();
 
         String authorization = headers.get(Authorization);

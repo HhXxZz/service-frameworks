@@ -24,6 +24,7 @@ public class RedisTest {
         StatefulRedisConnection<String, String> connection = client.connect();
 
         RedisCommands<String, String> commands = connection.sync();
+        //commands.xadd()
         commands.set("foo","123123");
         String value = commands.get("foo");
         //client.g

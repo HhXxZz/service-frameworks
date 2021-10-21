@@ -3,13 +3,13 @@ package base.service.frameworks.misc;
 import base.service.frameworks.utils.*;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.multipart.*;
 import io.netty.util.CharsetUtil;
 import base.service.frameworks.vo.StatCommon;
-import base.service.frameworks.vo.UploadedFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,7 +28,6 @@ import java.util.*;
  * <br/>1. 自动解析 GET 或 POST 方式的键值对参数
  * <br/>2. 在参数原本不存在的情况下，将uri、ip、body放入参数集
  */
-@SuppressWarnings({"SameParameterValue", "unused", "WeakerAccess"})
 public class Parameters {
     // ===========================================================
     // Constants
@@ -94,46 +93,22 @@ public class Parameters {
     // ===========================================================
     // Fields
     // ===========================================================
-    private final Map<String, List<String>>       mParams;
-    private final Map<String, List<UploadedFile>> mFiles;
-    private       HttpMethod                      mMethod;
-    private       HttpHeaders                     mHeaders;
-    private       long                            mCost;
-    private       String                          mIP;
-    private       String                          mURI;
-    private       String                          mBody;
+    private final Map<String, List<String>> mParams;
+    private String mMethodStr;
+    private Map<String, String> headers;
+    private long mCost;
+    private String mIP;
+    private String mURI;
+    private String mBody;
 
     // ===========================================================
     // Constructors
     // ===========================================================
     public Parameters(ChannelHandlerContext pContext, FullHttpRequest pRequest) {
         this.mParams = new HashMap<>();
-        this.mFiles = new HashMap<>();
         this.parse(pContext, pRequest);
     }
 
-    // ===========================================================
-    // Getter &amp; Setter
-    // ===========================================================
-    public HttpMethod getMethod() {
-        return mMethod;
-    }
-
-    public boolean isGet() {
-        return mMethod == HttpMethod.GET;
-    }
-
-    public boolean isPost() {
-        return mMethod == HttpMethod.POST;
-    }
-
-    public boolean isPut() {
-        return mMethod == HttpMethod.PUT;
-    }
-
-    public boolean isDelete() {
-        return mMethod == HttpMethod.DELETE;
-    }
 
     public String getIP() {
         return mIP;
@@ -151,29 +126,116 @@ public class Parameters {
         return DEFAULT_INFO;
     }
 
-    public boolean hasHeader(String pHeaderName) {
-        return mHeaders != null && mHeaders.contains(pHeaderName);
-    }
 
     // ===========================================================
     // Methods for/from SuperClass/Interfaces
     // ===========================================================
 
 
+    /**
+     * 获取头部参数
+     *
+     * @return 头部参数MAP
+     */
+    private Map<String, String> getHeaderParam(HttpHeaders httpHeaders) {
+        Map<String, String> headerParam = new HashMap<>();
+        for (Iterator<Map.Entry<String, String>> it = httpHeaders.iteratorAsString(); it.hasNext(); ) {
+            Map.Entry<String, String> header = it.next();
+            headerParam.put(header.getKey(), header.getValue());
+        }
+        return headerParam;
+    }
+
+    /**
+     * 分析请求参数，支持GET和POST方式
+     * 会增加 ip 和 uri 参数
+     *
+     * @param pContext ChannelHandlerContext
+     * @param pRequest HttpRequest
+     */
+    private void parse(ChannelHandlerContext pContext, FullHttpRequest pRequest) {
+        long start = System.nanoTime();
+        mParams.clear();
+        HttpMethod mMethod = pRequest.method();
+        mMethodStr = mMethod.name();
+        HttpHeaders httpHeaders = pRequest.headers();
+        headers = getHeaderParam(httpHeaders);
+        if (HttpMethod.GET == mMethod || HttpMethod.DELETE == mMethod) {
+            // GET
+            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(pRequest.uri(), CharsetUtil.UTF_8);
+            mParams.putAll(queryStringDecoder.parameters());
+        } else if (HttpMethod.POST == mMethod || HttpMethod.PUT == mMethod) {
+            // body
+            ByteBuf content = pRequest.content();
+            mBody = content != null ? content.toString(StandardCharsets.UTF_8) : "";
+            // POST
+            HttpPostRequestDecoder postRequestDecoder = null;
+            try {
+                postRequestDecoder = new HttpPostRequestDecoder(pRequest);
+                List<InterfaceHttpData> postList = postRequestDecoder.getBodyHttpDatas();
+
+                for (InterfaceHttpData data : postList) {
+                    if (InterfaceHttpData.HttpDataType.Attribute == data.getHttpDataType()) {
+                        String    name      = data.getName();
+                        String    value;
+                        Attribute attribute = (Attribute) data;
+                        attribute.setCharset(CharsetUtil.UTF_8);
+                        value = attribute.getValue();
+                        if (!mParams.containsKey(name)) {
+                            List<String> params = new ArrayList<>();
+                            params.add(value);
+                            mParams.put(name, params);
+                        } else {
+                            mParams.get(name).add(value);
+                        }
+                        if (postRequestDecoder.isMultipart()) {
+                            data.retain();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                String contentType = "unknown";
+                try {
+                    contentType = pRequest.headers().get(HttpHeaderNames.CONTENT_TYPE);
+                } catch (Exception ignore) {
+                }
+                LOG.error(e);
+            } finally {
+                if (postRequestDecoder != null) {
+                    postRequestDecoder.destroy();
+                }
+            }
+        }
+        String ip = pRequest.headers().get("X-Forwarded-For");
+        if (ip == null) {
+            InetSocketAddress address = (InetSocketAddress) pContext.channel().remoteAddress();
+            ip = address.getAddress().getHostAddress();
+
+            Inet6Address a;
+        }
+        if (!StringUtil.isEmpty(ip) && ip.contains(",")) {
+            ip = Splitter.on(",").trimResults().splitToList(ip).get(0);
+        }
+        mIP = ip;
+
+        String uri = pRequest.uri();
+        if (uri.contains("?")) {
+            uri = uri.substring(0, uri.indexOf("?"));
+        }
+        mURI = uri;
+
+        mCost = System.nanoTime() - start;
+    }
+
     @Override
     public String toString() {
         StringBuilder content = new StringBuilder();
         content.append("请求详情").append(System.lineSeparator());
         content.append(" ┣ URI ").append(mURI).append(System.lineSeparator());
-        content.append(" ┣ Method ").append(mMethod.name()).append(System.lineSeparator());
-        content.append(" ┣ Header ").append(mHeaders.size()).append(System.lineSeparator());
-        for (Iterator<Map.Entry<String, String>> it = mHeaders.iteratorAsString(); it.hasNext(); ) {
-            Map.Entry<String, String> header = it.next();
-            if (it.hasNext()) {
-                content.append(" ┃ ┣ [ ").append(header.getKey()).append(" ] ").append(header.getValue()).append(System.lineSeparator());
-            } else {
-                content.append(" ┃ ┗ [ ").append(header.getKey()).append(" ] ").append(header.getValue()).append(System.lineSeparator());
-            }
+        content.append(" ┣ Method ").append(mMethodStr).append(System.lineSeparator());
+        content.append(" ┣ Header ").append(System.lineSeparator());
+        for(String key:headers.keySet()){
+            content.append(" ┃ ┣ [ ").append(key).append(" ] ").append(headers.get(key)).append(System.lineSeparator());
         }
         content.append(" ┣ IP ").append(mIP).append(System.lineSeparator());
         content.append(" ┣ Parameter ").append(mParams.values().stream().mapToInt(List::size).sum()).append(System.lineSeparator());
@@ -185,22 +247,6 @@ public class Parameters {
                 content.append(" ┃ ┗ [ ").append(key).append(" ] ").append(getList(key)).append(System.lineSeparator());
             }
         }
-        content.append(" ┣ files ").append(mFiles.values().stream().mapToInt(List::size).sum()).append(System.lineSeparator());
-        for (String key : mFiles.keySet()) {
-            List<UploadedFile> files = getFile(key);
-            for (Iterator<UploadedFile> f = files.iterator(); f.hasNext(); ) {
-                UploadedFile file = f.next();
-                if (f.hasNext()) {
-                    content.append(" ┃ ┣ [ ").append(key).append(" ] ").append(file.toString()).append(System.lineSeparator());
-                } else {
-                    content.append(" ┃ ┗ [ ").append(key).append(" ] ").append(file.toString()).append(System.lineSeparator());
-                }
-            }
-        }
-        if (mFiles.size() < 1) {
-            content.append(" ┣ Body Raw ").append(System.lineSeparator());
-            content.append(" ┃ ┗ ").append(mBody).append(System.lineSeparator());
-        }
         content.append(" ┗ Parse cost ").append(mCost).append(" ns").append(System.lineSeparator());
         return content.toString();
     }
@@ -210,15 +256,6 @@ public class Parameters {
     // ===========================================================
     public void clear() {
         this.mParams.clear();
-        this.mFiles.clear();
-    }
-
-    public boolean hasFile(String pKey) {
-        return mFiles.containsKey(pKey);
-    }
-
-    public List<UploadedFile> getFile(String pKey) {
-        return mFiles.get(pKey);
     }
 
     public Set<String> keySet() {
@@ -396,107 +433,7 @@ public class Parameters {
         return null;
     }
 
-    /**
-     * 分析请求参数，支持GET和POST方式
-     * 会增加 ip 和 uri 参数
-     *
-     * @param pContext ChannelHandlerContext
-     * @param pRequest HttpRequest
-     */
-    private void parse(ChannelHandlerContext pContext, FullHttpRequest pRequest) {
-        long start = System.nanoTime();
-        mParams.clear();
-        mMethod = pRequest.method();
-        mHeaders = pRequest.headers();
 
-        if (HttpMethod.GET == mMethod || HttpMethod.DELETE == mMethod) {
-            // GET
-            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(pRequest.uri(), CharsetUtil.UTF_8);
-            mParams.putAll(queryStringDecoder.parameters());
-        } else if (HttpMethod.POST == mMethod || HttpMethod.PUT == mMethod) {
-            // body
-            ByteBuf content = pRequest.content();
-            mBody = content != null ? content.toString(StandardCharsets.UTF_8) : "";
-            // POST
-            HttpPostRequestDecoder postRequestDecoder = null;
-            try {
-                postRequestDecoder = new HttpPostRequestDecoder(pRequest);
-                List<InterfaceHttpData> postList = postRequestDecoder.getBodyHttpDatas();
-
-                for (InterfaceHttpData data : postList) {
-                    if (InterfaceHttpData.HttpDataType.Attribute == data.getHttpDataType()) {
-                        String    name      = data.getName();
-                        String    value;
-                        Attribute attribute = (Attribute) data;
-                        attribute.setCharset(CharsetUtil.UTF_8);
-                        value = attribute.getValue();
-                        if (!mParams.containsKey(name)) {
-                            List<String> params = new ArrayList<>();
-                            params.add(value);
-                            mParams.put(name, params);
-                        } else {
-                            mParams.get(name).add(value);
-                        }
-                        if (postRequestDecoder.isMultipart()) {
-                            data.retain();
-                        }
-                    } else if (InterfaceHttpData.HttpDataType.FileUpload == data.getHttpDataType()) {
-                        FileUpload upload = (FileUpload) data;
-                        String     name   = upload.getName();
-
-                        UploadedFile uploaded = new UploadedFile();
-                        uploaded.raw = upload.get();
-                        uploaded.charset = upload.getCharset();
-                        uploaded.content = upload.getString(uploaded.charset);
-                        uploaded.originName = upload.getFilename();
-                        uploaded.extension = FileUtil.getExtension(uploaded.originName);
-
-                        if (!mFiles.containsKey(name)) {
-                            List<UploadedFile> files = new ArrayList<>();
-                            files.add(uploaded);
-                            mFiles.put(name, files);
-                        } else {
-                            mFiles.get(name).add(uploaded);
-                        }
-
-                        //LOG.dd("FILE %s inMemory:%s", uploaded.toString(), upload.isInMemory());
-
-                        postRequestDecoder.removeHttpDataFromClean(data);
-                    }
-                }
-            } catch (Exception e) {
-                String contentType = "unknown";
-                try {
-                    contentType = pRequest.headers().get(HttpHeaderNames.CONTENT_TYPE);
-                } catch (Exception ignore) {
-                }
-                LOG.error(e);
-            } finally {
-                if (postRequestDecoder != null) {
-                    postRequestDecoder.destroy();
-                }
-            }
-        }
-        String ip = pRequest.headers().get("X-Forwarded-For");
-        if (ip == null) {
-            InetSocketAddress address = (InetSocketAddress) pContext.channel().remoteAddress();
-            ip = address.getAddress().getHostAddress();
-
-            Inet6Address a;
-        }
-        if (!StringUtil.isEmpty(ip) && ip.contains(",")) {
-            ip = Splitter.on(",").trimResults().splitToList(ip).get(0);
-        }
-        mIP = ip;
-
-        String uri = pRequest.uri();
-        if (uri.contains("?")) {
-            uri = uri.substring(0, uri.indexOf("?"));
-        }
-        mURI = uri;
-
-        mCost = System.nanoTime() - start;
-    }
 
     public static StatCommon parseStatCommon(Parameters mParams) {
         StatCommon stat = new StatCommon();
@@ -524,19 +461,7 @@ public class Parameters {
         return stat;
     }
 
-    /**
-     * 获取头部参数
-     *
-     * @return 头部参数MAP
-     */
-    public Map<String, String> getHeaderParam() {
-        Map<String, String> headerParam = new HashMap<>();
-        for (Iterator<Map.Entry<String, String>> it = mHeaders.iteratorAsString(); it.hasNext(); ) {
-            Map.Entry<String, String> header = it.next();
-            headerParam.put(header.getKey(), header.getValue());
-        }
-        return headerParam;
-    }
+
 
     public String printParameters() {
         List<String> pairs = new ArrayList<>();

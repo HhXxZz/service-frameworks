@@ -1,9 +1,9 @@
-package base.service.frameworks.rpc.zk;
+package base.service.frameworks.base;
 
 import base.service.frameworks.processor.BaseTask;
 import base.service.frameworks.processor.annotation.API;
+import base.service.frameworks.rpc.common.ServiceInfo;
 import base.service.frameworks.utils.ClassScanner;
-import base.service.frameworks.utils.GsonUtil;
 
 import java.util.*;
 
@@ -14,27 +14,19 @@ public enum  ApiFactory {
 	public static final String GET = "GET";
 	public static final String POST = "POST";
 
-	private String product;
-	private String module;
-	private String host;
-	private int port;
+	private ServiceInfo serviceInfo;
 
 	//接口MAP  module-><url,class>
 	public Map<String, Map<String, Class<?>>> ROUTE_MAP = new HashMap<>();
 
-
-    public void init(String product, String module, String host, int port,String... pPackage){
-    	this.product = product;
-		this.module = module;
-		this.host = host;
-		this.port = port;
-
+    public void init(ServiceInfo serviceInfo,String... pPackage){
+    	this.serviceInfo = serviceInfo;
 		scanApi(pPackage);
     }
 
 	/**
 	 * 扫描所有的Api接口
-	 * @param pPackage
+	 * @param pPackage 接口包路径
 	 */
 	private void scanApi(String... pPackage) {
 		if (pPackage != null && pPackage.length > 0) {
@@ -42,12 +34,12 @@ public enum  ApiFactory {
 				List<Class<? extends BaseTask>> apis = ClassScanner.in(packageName).withAnnotation(API.class).scanInherited(BaseTask.class);
 				apis.forEach(clazz -> {
 					API api = clazz.getAnnotation(API.class);
-					if(ROUTE_MAP.containsKey(module)){
-						ROUTE_MAP.get(module).put(api.uri(),clazz);
+					if(ROUTE_MAP.containsKey(serviceInfo.getServiceName())){
+						ROUTE_MAP.get(serviceInfo.getServiceName()).put(api.uri(),clazz);
 					}else{
 						Map<String,Class<?>>tempMap = new HashMap<>();
 						tempMap.put(api.uri(),clazz);
-						ROUTE_MAP.put(module,tempMap);
+						ROUTE_MAP.put(serviceInfo.getServiceName(),tempMap);
 					}
 				});
 			});
@@ -55,27 +47,9 @@ public enum  ApiFactory {
 	}
 
 	public static void main(String[] args) {
-		ApiFactory.INSTANCE.init("ex","product","127.0.0.1",9896,"base.service.frameworks.processor");
 
-
-		System.out.println(GsonUtil.toJson(ApiFactory.INSTANCE.ROUTE_MAP.toString()));
 	}
 
-    public String getProduct(){
-    	return product;
-    }
-    
-    public String getBusiness(){
-    	return module;
-    }
-
-    public String getHost(){
-    	return host;
-    }
-
-    public int getPort(){
-    	return port;
-    }
 
 	public Class<?> getLogicClass(String module, String url) {
 		if(ROUTE_MAP.containsKey(module)){
@@ -90,7 +64,7 @@ public enum  ApiFactory {
 	 * host:port->{url:class}
 	 * @return
 	 */
-	public String getUrlData(){
+	public List<ApiInfo> getApiList(){
 		Map<String, Class<?>> actionList;
 		Class<?> clazz;
 		API api;
@@ -114,29 +88,9 @@ public enum  ApiFactory {
 				apiList.add(apiInfo);
 			}
 		}
-		Map<String,Object> data = new HashMap<>();
-		data.put("host", host);
-		data.put("port", port);
-		data.put("services", apiList);
-		return GsonUtil.toJson(data);
+		return apiList;
 
 	}
-
-    
-//	public static Map<String, Class<?>> getActionList(Class<?>[] clazzList) {
-//		ActionConfig actionConfig = null;
-//		Class<?> clazz = null;
-//		Map<String, Class<?>> actionList = new HashMap<String, Class<?>>();
-//		for (int i = 0; i < clazzList.length; i++) {
-//			clazz = clazzList[i];
-//			actionConfig = clazz.getAnnotation(ActionConfig.class);
-//			actionList.put(actionConfig.name(), clazz);
-//		}
-//		return actionList;
-//	}
-
-
-
 
 
 	public static class ApiInfo {

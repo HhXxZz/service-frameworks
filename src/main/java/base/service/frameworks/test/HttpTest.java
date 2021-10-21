@@ -1,6 +1,5 @@
-package rpc;
+package base.service.frameworks.test;
 
-import base.service.frameworks.rpc.zk.ServiceDiscovery;
 
 /**
  * Created by hxz on 2021/7/6 17:01.
@@ -12,7 +11,6 @@ public class HttpTest {
 
 
         XHttpServer server = new XHttpServer();
-        server.init(null);
         server.start();
 
     }

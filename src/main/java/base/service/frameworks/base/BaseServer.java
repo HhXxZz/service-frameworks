@@ -1,24 +1,33 @@
-package base.service.frameworks;
+package base.service.frameworks.base;
 
 import base.service.frameworks.misc.Config;
 import base.service.frameworks.utils.ConnectionUtil;
 import base.service.frameworks.utils.HTTPUtil;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.WriteBufferWaterMark;
+import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.cors.CorsConfigBuilder;
+import io.netty.handler.codec.http.cors.CorsHandler;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.ResourceLeakDetector;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.internal.PlatformDependent;
 import okhttp3.Request;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import static io.netty.handler.codec.http.HttpMethod.*;
 
 /**
  * Created by someone on 2016-11-17 16:22.
@@ -29,7 +38,6 @@ import org.apache.logging.log4j.Logger;
  * <br/>
  * <br/>子类实现
  * <br/>·{@link BaseServer#release()} 退出时需要释放的业务内容
- * <br/>·{@link BaseServer#getServerInitializer()} 返回服务器初始化对象，需继承 {@link BaseServerInitializer}
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public abstract class BaseServer {
@@ -43,7 +51,7 @@ public abstract class BaseServer {
     private EventLoopGroup  mBossGroup;
     private EventLoopGroup  mWorkerGroup;
     private boolean         isEpollAvailable;
-
+    private DefaultEventExecutorGroup executorGroup;
     // ===========================================================
     // Constructors
     // ===========================================================
@@ -63,7 +71,7 @@ public abstract class BaseServer {
     // Methods
     // ===========================================================
     @SuppressWarnings("AnonymousHasLambdaAlternative")
-    protected void start() {
+    public void start() {
         if(Config.isInitialed() && PORT > 0) {
             checkEnvironment();
             Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -76,6 +84,13 @@ public abstract class BaseServer {
             mBossGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
             mWorkerGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
 
+            /**
+             * 1、如果所有客户端的并发连接数小于业务线程数，那么建议将请求消息封装成任务投递到后端普通业务线程池执行即可，ChannelHandler不需要处理复杂业务逻辑，也不需要再绑定EventExecutorGroup
+             *
+             * 2、如果所有客户端的并发连接数大于等于业务需要配置的线程数，那么可以为业务ChannelHandler绑定EventExecutorGroup——使用addLast的方法
+             */
+            executorGroup = new DefaultEventExecutorGroup(8, new DefaultThreadFactory("biz"));
+
             try {
                 ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
                 // ===========================================================
@@ -84,15 +99,41 @@ public abstract class BaseServer {
                 ServerBootstrap mBootstrap = new ServerBootstrap();
                 mBootstrap.group(mBossGroup, mWorkerGroup)
                         .channel(isEpollAvailable ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
-                        //.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-                        //.childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(8 * 1024, 32 * 1024))
-                        .childHandler(getServerInitializer());
+                        .option(ChannelOption.SO_BACKLOG, 100)
+                        .handler(new LoggingHandler(LogLevel.INFO))
+                        .childHandler(new ChannelInitializer<SocketChannel>() {
+                            @Override
+                            protected void initChannel(SocketChannel ch) {
+                                ChannelPipeline pipeline = ch.pipeline();
+                                pipeline.addLast(new HttpRequestDecoder());
+                                pipeline.addLast(new HttpResponseEncoder());
+                                pipeline.addLast(new HttpObjectAggregator(1048576));
+                                pipeline.addLast(new ChunkedWriteHandler());
+                                pipeline.addLast(new CorsHandler(
+                                        CorsConfigBuilder
+                                                .forAnyOrigin()
+                                                .allowedRequestMethods(OPTIONS, GET, POST, PUT, DELETE)
+                                                .allowedRequestHeaders("X-Requested-With", "Content-Type", "Content-Length")
+                                                .allowCredentials()
+                                                .build()
+                                ));
+                                pipeline.addLast(executorGroup, new BaseServerHandler());
+                                initCustomChannel(pipeline);
+                            }
+                        });
                 mChannel = mBootstrap.bind(PORT).sync().channel();
                 LOG.info("Server start in http://127.0.0.1:{}", PORT);
                 // 自动加载进行初始化
                 Request.Builder builder= new Request.Builder();
-                builder.url("http://127.0.0.1:"+PORT);
+                builder.url("http://127.0.0.1:"+PORT+"/test/test");
                 String resp = HTTPUtil.INSTANCE.execute(builder.build());
+                System.out.println(resp);
+                //初始化数据库
+//                if(Config.isDAOEnabled()){
+//                    ConnectionUtil.INSTANCE.init();
+//                }
+                //初始化抽象函数
+                init();
 
                 mChannel.closeFuture().sync();
             } catch (InterruptedException e) {
@@ -162,7 +203,13 @@ public abstract class BaseServer {
      */
     protected abstract void release();
 
-    protected abstract BaseServerInitializer getServerInitializer();
+    protected abstract void init();
+
+    protected abstract void initCustomChannel(ChannelPipeline pPipe);
+
+
+
+
     // ===========================================================
     // Inner and Anonymous Classes
     // ===========================================================

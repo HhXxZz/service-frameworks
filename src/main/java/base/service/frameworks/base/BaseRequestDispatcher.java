@@ -1,9 +1,8 @@
-package base.service.frameworks;
+package base.service.frameworks.base;
 
 import base.service.frameworks.misc.Code;
 import base.service.frameworks.misc.Parameters;
 import base.service.frameworks.utils.ResponseUtil;
-import base.service.frameworks.utils.ThreadPoolUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import org.apache.logging.log4j.LogManager;
