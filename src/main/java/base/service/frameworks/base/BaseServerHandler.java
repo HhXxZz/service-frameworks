@@ -35,24 +35,25 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class BaseServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Logger logger = LogManager.getLogger(BaseServerHandler.class);
 
-    public BaseServerHandler(){
-        super(true);
-    }
+//    public BaseServerHandler(){
+//        super(true);
+//    }
+//
+//    public BaseServerHandler(boolean pAutoRelease){
+//        super(true);
+//    }
 
-    public BaseServerHandler(boolean pAutoRelease){
-        super(true);
-    }
 
 
-    @Override
-    public void channelReadComplete(ChannelHandlerContext pContext) {
-        pContext.flush();
-    }
+
+//    @Override
+//    public void channelReadComplete(ChannelHandlerContext pContext) {
+//        pContext.flush();
+//    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
         try {
-
             if (HttpUtil.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
@@ -84,6 +85,10 @@ public class BaseServerHandler extends SimpleChannelInboundHandler<FullHttpReque
             messageRequest.setApi(api);
             messageRequest.setParams(parameters);
             MessageResponse responseStr = clientPool.syncTransport(messageRequest);
+            //MessageResponse responseStr = new MessageResponse();
+            //responseStr.setData("aaaa");
+
+            System.out.println("response:"+responseStr.getData());
             FullHttpResponse response = new DefaultFullHttpResponse(
                     HTTP_1_1, OK,
                     Unpooled.copiedBuffer(responseStr.getData(), CharsetUtil.UTF_8));
@@ -99,20 +104,21 @@ public class BaseServerHandler extends SimpleChannelInboundHandler<FullHttpReque
             }
 
             ctx.writeAndFlush(response);
+
         }catch (Exception e){
             logger.error("handler.error",e);
         }
-        ResponseUtil.writeErrorResponse(request, ctx, "", 0, "error");
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext pContext, Throwable pCause) {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable pCause) {
         String message = pCause.getMessage();
         if(!message.contains("Connection reset by peer") && !message.contains("远程主机强迫关闭了一个现有的连接")){
             logger.error(pCause.getMessage(), pCause);
         }
-        logger.error("exceptionCaught.error",pCause);
-        pContext.close();
+//        logger.error("exceptionCaught.error",pCause);
+//        ctx.flush();
+//        ctx.channel().close();
     }
 
     // ===========================================================

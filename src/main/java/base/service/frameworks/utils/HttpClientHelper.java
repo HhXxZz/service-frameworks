@@ -5,6 +5,7 @@ import okhttp3.*;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 
 public class HttpClientHelper {
@@ -23,14 +24,16 @@ public class HttpClientHelper {
 	
 	
     public static String get(String url, Map<String, String> params) throws IOException {
-        HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(url).newBuilder();
-//        for(String name : params.keySet()){
-//            httpUrlBuilder.addQueryParameter(name, params.get(name));
-//        }
+        HttpUrl.Builder httpUrlBuilder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
+        for(String name : params.keySet()){
+            httpUrlBuilder.addQueryParameter(name, params.get(name));
+        }
         Request request = new Request.Builder().url(httpUrlBuilder.build()).build();
         Response response = httpClient.newCall(request).execute();
-        System.out.println(response.body().string());
-        return response.body().string();
+        if(response.isSuccessful() && response.body() != null){
+            return response.body().string();
+        }
+        return null;
     }
     
     public static String get(String url,Map<String,String>headers, Map<String, String> params) throws IOException {
@@ -73,7 +76,10 @@ public class HttpClientHelper {
         }
         Request request = new Request.Builder().url(url).post(bodyBuilder.build()).build();
         Response response = httpClient.newCall(request).execute();
-        return response.body().string();
+        if(response.isSuccessful() && response.body() != null){
+            return response.body().string();
+        }
+        return null;
     }
     
     public static String post(String url, String params) throws IOException {

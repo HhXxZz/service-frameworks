@@ -3,8 +3,11 @@ package base.service.frameworks.utils;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.shardingsphere.api.config.masterslave.MasterSlaveRuleConfiguration;
+import org.apache.shardingsphere.shardingjdbc.api.MasterSlaveDataSourceFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -12,7 +15,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -29,13 +32,13 @@ public enum  ConnectionUtil {
     // ===========================================================
     private static final Logger LOG = LogManager.getLogger(ConnectionUtil.class);
 
-    private static final String CPU_CORE               = "CPU.Core";
-    private static final String BASE_PASSWORD          = "BASE.Password";
-    private static final String BASE_USERNAME          = "BASE.Username";
-    private static final String BASE_CONNECTION_URL    = "BASE.ConnectionURL";
-    private static final String BASE_DRIVER            = "BASE.Driver";
-    private static final String BASE_MySQLWaitTimeout  = "BASE.MySQLWaitTimeout";
-    private static final String BASE_MySQLSpindleCount = "BASE.MySQLSpindleCount";
+    private static final String CPU_CORE               = "%s.CPU.Core";
+    private static final String BASE_PASSWORD          = "%s.BASE.Password";
+    private static final String BASE_USERNAME          = "%s.BASE.Username";
+    private static final String BASE_CONNECTION_URL    = "%s.BASE.ConnectionURL";
+    private static final String BASE_DRIVER            = "%s.BASE.Driver";
+    private static final String BASE_MySQLWaitTimeout  = "%s.BASE.MySQLWaitTimeout";
+    private static final String BASE_MySQLSpindleCount = "%s.BASE.MySQLSpindleCount";
 
     private static final String DEFAULT_BASE_PASSWORD          = "root";
     private static final String DEFAULT_BASE_USERNAME          = "sd-9898w";
@@ -49,8 +52,10 @@ public enum  ConnectionUtil {
     // Fields
     // ===========================================================
     private AtomicBoolean    mInitialed = new AtomicBoolean(false);
-    private HikariDataSource ds         = new HikariDataSource();
-    private JdbcTemplate     jdbc       = new JdbcTemplate(ds);
+    //private HikariDataSource ds         = new HikariDataSource();
+    private DataSource dataSource;
+    private JdbcTemplate jdbc;
+
 
     // ===========================================================
     // Constructors
@@ -74,7 +79,7 @@ public enum  ConnectionUtil {
         if(mInitialed.compareAndSet(false, true)) {
             InputStream ins = null;
             try {
-                ins = ConnectionUtil.class.getClassLoader().getResourceAsStream("db.cfg.properties");
+                ins = ConnectionUtil.class.getClassLoader().getResourceAsStream("db.properties");
                 Properties pro = new Properties();
                 if (ins != null) {
                     pro.load(ins);
@@ -83,25 +88,25 @@ public enum  ConnectionUtil {
                     mInitialed.set(false);
                     pro.load(new StringReader(""));
                 }
-                String base_driver       = pro.getProperty(BASE_DRIVER, DEFAULT_BASE_DRIVER);
-                String base_url          = pro.getProperty(BASE_CONNECTION_URL, DEFAULT_BASE_CONNECTION_URL);
-                String base_user         = pro.getProperty(BASE_USERNAME, DEFAULT_BASE_USERNAME);
-                String base_password     = pro.getProperty(BASE_PASSWORD, DEFAULT_BASE_PASSWORD);
-                int    base_wait_timeout = Integer.parseInt(pro.getProperty(BASE_MySQLWaitTimeout, DEFAULT_BASE_MySQLWaitTimeout));
-                int    cpu_core          = Integer.parseInt(pro.getProperty(CPU_CORE, DEFAULT_CPU_CORE));
-                int    spindle_count     = Integer.parseInt(pro.getProperty(BASE_MySQLSpindleCount, DEFAULT_BASE_MySQLSpindleCount));
-
-                ds.setDriverClassName(base_driver);
-                ds.setJdbcUrl(base_url);
-                ds.setUsername(base_user);
-                ds.setPassword(base_password);
-                // Less than MySQL wait_timeout (show variables like '%timeout%';)
-                ds.setMaxLifetime((base_wait_timeout - 60) * 1000);
-                // ds.setIdleTimeout((base_wait_timeout - 61) * 1000); // MaxLifetime - IdleTimeout > 1000
-                // connections = ((core_count * 2) + effective_spindle_count)
-                ds.setMaximumPoolSize(cpu_core * 2 + spindle_count);
+                List<String> sources = GsonUtil.listFromJson(pro.getProperty("sources","[]"),String[].class);
+                if(sources.isEmpty()){
+                    LOG.error("MISSING : sources !");
+                    mInitialed.set(false);
+                    pro.load(new StringReader(""));
+                }
+                List<DataSource> list = buildDataSource(sources,pro);
+                if(list.size() == 1){
+                    //单个数据库连接
+                    dataSource = list.get(0);
+                }else{
+                    //多个数据库连接
+                    dataSource = buildMasterSlaveDataSource(sources,list);
+                }
+                jdbc = new JdbcTemplate(dataSource);
             } catch (IOException ex) {
                 LOG.error( "Parsing Error : db.cfg.properties !",ex);
+            } catch (SQLException e){
+                LOG.error( "SQL Error :  !",e);
             } finally {
                 if (ins != null) {
                     try {
@@ -114,15 +119,66 @@ public enum  ConnectionUtil {
         }
     }
 
+    private List<DataSource> buildDataSource(List<String> sources,Properties pro){
+        List<DataSource> list = new ArrayList<>();
+        for(String source:sources) {
+            //masterDataSource
+            String base_driver = pro.getProperty(String.format(BASE_DRIVER,source), DEFAULT_BASE_DRIVER);
+            String base_url = pro.getProperty(String.format(BASE_CONNECTION_URL,source), DEFAULT_BASE_CONNECTION_URL);
+            String base_user = pro.getProperty(String.format(BASE_USERNAME,source), DEFAULT_BASE_USERNAME);
+            String base_password = pro.getProperty(String.format(BASE_PASSWORD,source), DEFAULT_BASE_PASSWORD);
+            int base_wait_timeout = Integer.parseInt(pro.getProperty(String.format(BASE_MySQLWaitTimeout,source), DEFAULT_BASE_MySQLWaitTimeout));
+            int cpu_core = Integer.parseInt(pro.getProperty(String.format(CPU_CORE,source), DEFAULT_CPU_CORE));
+            int spindle_count = Integer.parseInt(pro.getProperty(String.format(BASE_MySQLSpindleCount,source), DEFAULT_BASE_MySQLSpindleCount));
+            HikariDataSource dataSource = new HikariDataSource();
+            dataSource.setDriverClassName(base_driver);
+            dataSource.setJdbcUrl(base_url);
+            dataSource.setUsername(base_user);
+            dataSource.setPassword(base_password);
+            // Less than MySQL wait_timeout (show variables like '%timeout%';)
+            dataSource.setMaxLifetime((base_wait_timeout - 60) * 1000);
+            // ds.setIdleTimeout((base_wait_timeout - 61) * 1000); // MaxLifetime - IdleTimeout > 1000
+            // connections = ((core_count * 2) + effective_spindle_count)
+            dataSource.setMaximumPoolSize(cpu_core * 2 + spindle_count);
+            list.add(dataSource);
+        }
+        return list;
+    }
+
+    private DataSource buildMasterSlaveDataSource(List<String> sourceNameList,List<DataSource> sourceList) throws SQLException {
+        // 配置真实数据源
+        Map<String, DataSource> dataSourceMap = new HashMap<>();
+        String master = "";
+        List<String> slaveSourceName = new ArrayList<>();
+        for(int i=0;i<sourceList.size();i++) {
+            String tempName = sourceNameList.get(i);
+            Map<String, DataSource> temp = new HashMap<>();
+            dataSourceMap.put(tempName,sourceList.get(i));
+            if(i == 0){
+                master = tempName;
+            }else{
+                slaveSourceName.add(tempName);
+            }
+        }
+        System.out.println(GsonUtil.toJson(slaveSourceName));
+        MasterSlaveRuleConfiguration masterSlaveRuleConfig = new MasterSlaveRuleConfiguration("ds_master_slave", master, slaveSourceName);
+        return MasterSlaveDataSourceFactory.createDataSource(dataSourceMap, masterSlaveRuleConfig, new Properties());
+    }
+
+
+    private String getSourceName(Map<String,DataSource>map){
+        return map.keySet().stream().iterator().next();
+    }
+
     /**
      * 释放数据库，主要是关闭连接池
      */
     @SuppressWarnings("unused")
     public void release(){
         if(mInitialed.compareAndSet(true, false)) {
-            if (ds != null) {
-                ds.close();
-            }
+//            if (ds != null) {
+//                ds.close();
+//            }
         }
     }
 
@@ -133,7 +189,7 @@ public enum  ConnectionUtil {
      */
     public Connection getConnection() throws SQLException {
         ready("getConnection");
-        return ds.getConnection();
+        return dataSource.getConnection();
     }
 
     /**

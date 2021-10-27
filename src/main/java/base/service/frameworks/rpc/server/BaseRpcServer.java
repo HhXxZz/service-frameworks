@@ -1,6 +1,7 @@
 package base.service.frameworks.rpc.server;
 
 import base.service.frameworks.misc.Config;
+import base.service.frameworks.redis.RedisClient;
 import base.service.frameworks.rpc.common.MessageRequestDecoder;
 import base.service.frameworks.rpc.common.MessageResponseEncoder;
 import base.service.frameworks.base.ApiFactory;
@@ -53,6 +54,8 @@ public class BaseRpcServer {
 
         NacosManager.INSTANCE.init(address);
         NacosManager.INSTANCE.register(serviceInfo);
+
+        RedisClient.INSTANCE.init();
 
     }
 

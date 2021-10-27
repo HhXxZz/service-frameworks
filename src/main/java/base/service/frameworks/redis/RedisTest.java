@@ -13,7 +13,7 @@ public class RedisTest {
 
 
     public static void main(String[] args) {
-        RedisURI redisUri = RedisURI.Builder.redis("localhost")
+        RedisURI redisUri = RedisURI.Builder.redis("127.0.0.1")
                 .withPort(6379)
                 //.withPassword("authentication".toCharArray())
                 //.withDatabase(2)

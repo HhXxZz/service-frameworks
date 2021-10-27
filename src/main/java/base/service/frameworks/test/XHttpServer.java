@@ -37,7 +37,6 @@ public class XHttpServer extends BaseServer {
 
 	@Override
 	protected void init() {
-		System.out.println("=====================init");
 		//defaultPort = Integer.parseInt(properties.getProperty("service.server.port").trim());
 
 

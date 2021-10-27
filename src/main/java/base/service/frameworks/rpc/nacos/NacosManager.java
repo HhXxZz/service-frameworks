@@ -31,8 +31,9 @@ public enum  NacosManager {
 
     public void init(String serverAddress){
         try {
-            namingService = NamingFactory.createNamingService(serverAddress);
-            init.compareAndSet(false,true);
+            if(init.compareAndSet(false,true)) {
+                namingService = NamingFactory.createNamingService(serverAddress);
+            }
         } catch (NacosException e) {
             e.printStackTrace();
         }

@@ -27,7 +27,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MessageRequest> {
 
     @Override
     public void channelRead0(final ChannelHandlerContext ctx,final MessageRequest request) {
-        logger.info("Receive request " + request.toString());
+        //logger.info("Receive request " + request.toString());
         MessageResponse response = handleRequest(request);
         ctx.writeAndFlush(response).addListener((ChannelFutureListener) channelFuture -> {
             logger.info("Send response for request " + request.getRequestId());
@@ -42,7 +42,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<MessageRequest> {
 		if(clazz != null){
 			try {
 				Constructor<?> constructor = clazz.getConstructor(Parameters.class);
-                System.out.println(request.getParams().toString());
 				Object logicObject = constructor.newInstance(request.getParams());
 				response.setData(logicObject.toString());
                 errCode = 0;

@@ -1,17 +1,12 @@
 package base.service.frameworks.processor;
 
-import base.service.frameworks.misc.StaticFileSetting;
 import base.service.frameworks.utils.GsonUtil;
 import base.service.frameworks.utils.StringUtil;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.AsciiString;
 import base.service.frameworks.misc.Code;
 import base.service.frameworks.misc.Parameters;
-import base.service.frameworks.utils.ResponseUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 public abstract class BaseTask {
     // ===========================================================
     // Constants
@@ -29,7 +24,6 @@ public abstract class BaseTask {
     public BaseTask(Parameters pParams) {
         this.mParams = pParams;
         //this.mCallback = mParams.getString(Parameters.callback, "");
-        System.out.println(mParams.toString());
     }
 
     public void enableToken(boolean pEnableToken) {
@@ -52,7 +46,6 @@ public abstract class BaseTask {
     @Override
     public String toString(){
         try {
-            System.out.println("-------=");
             if(!StringUtil.isEmpty(prepare())){
                 return prepare();
             }

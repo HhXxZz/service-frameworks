@@ -3,6 +3,7 @@ package base.service.frameworks.processor;
 import base.service.frameworks.misc.Parameters;
 import base.service.frameworks.processor.annotation.API;
 import base.service.frameworks.base.ApiFactory;
+import base.service.frameworks.redis.RedisClient;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +29,14 @@ public class InfoTask extends BaseTask {
 
     @Override
     public String execute() {
+        String id = mParams.getString("id","");
+       // String data = mParams.getString("data","");
+       // RedisClient.INSTANCE.set(id,data);
+
         Map<String,String>map = new HashMap<>();
-        map.put("aaa","aa");
+        map.put("id", RedisClient.INSTANCE.get(id));
+        //map.put("data", RedisClient.INSTANCE.get("data"));
+
         return successResponse(map);
     }
 }

@@ -124,10 +124,10 @@ public abstract class BaseServer {
                 mChannel = mBootstrap.bind(PORT).sync().channel();
                 LOG.info("Server start in http://127.0.0.1:{}", PORT);
                 // 自动加载进行初始化
-                Request.Builder builder= new Request.Builder();
-                builder.url("http://127.0.0.1:"+PORT+"/test/test");
-                String resp = HTTPUtil.INSTANCE.execute(builder.build());
-                System.out.println(resp);
+//                Request.Builder builder= new Request.Builder();
+//                builder.url("http://127.0.0.1:"+PORT+"/test/test");
+//                String resp = HTTPUtil.INSTANCE.execute(builder.build());
+//                System.out.println(resp);
                 //初始化数据库
 //                if(Config.isDAOEnabled()){
 //                    ConnectionUtil.INSTANCE.init();
