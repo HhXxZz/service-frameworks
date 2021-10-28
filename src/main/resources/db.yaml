@@ -1,0 +1,30 @@
+dataSources:
+  master:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:7706/base_user?autoReconnect=true&autoReconnectForPools=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&rewriteBatchedStatements=true&useAffectedRows=true&serverTimezone=GMT%2B8
+    username: root
+    password: 123456
+
+  slave1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:7707/base_user?autoReconnect=true&autoReconnectForPools=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&rewriteBatchedStatements=true&useAffectedRows=true&serverTimezone=GMT%2B8
+    username: root
+    password: 123456
+
+rules:
+- !READWRITE_SPLITTING
+  dataSources:
+    db: # 读写分离逻辑数据源名称
+      writeDataSourceName: master # 写库数据源名称
+      readDataSourceNames: [slave1]
+      loadBalancerName: roundRobin # 负载均衡算法名称
+      # queryConsistent: true # 是否启用查询一致性路由
+  # 负载均衡算法配置
+  loadBalancers:
+    roundRobin:
+      type: ROUND_ROBIN
+
+props:
+  sql-show: true

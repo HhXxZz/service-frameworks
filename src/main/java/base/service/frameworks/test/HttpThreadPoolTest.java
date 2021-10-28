@@ -54,15 +54,17 @@ public class HttpThreadPoolTest {
             long end = System.currentTimeMillis();
             System.out.println(end-start);
 
-            // QPS
+            // Redis QPS
             // 单台 8thread  5872
             // 两台 8thread  4705
             // 三台 8thread  4471
-
             // 单台 4thread  6000
             // 两台 4thread  4971
-
             // 单台 20thread  6490
+
+            // mysql QPS
+            // 单台 4thread  6000
+            // 两台 4thread  4900
 
 
         }catch (Exception e){

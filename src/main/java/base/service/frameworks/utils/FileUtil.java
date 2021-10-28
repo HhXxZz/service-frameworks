@@ -263,6 +263,17 @@ public class FileUtil {
         throw new IllegalArgumentException();
     }
 
+    public static byte[] input2byte(InputStream inStream)
+            throws IOException {
+        ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
+        byte[] buff = new byte[1024];
+        int rc = 0;
+        while ((rc = inStream.read(buff, 0, 1024)) > 0) {
+            swapStream.write(buff, 0, rc);
+        }
+        return swapStream.toByteArray();
+    }
+
     // ===========================================================
     // Inner and Anonymous Classes
     // ===========================================================

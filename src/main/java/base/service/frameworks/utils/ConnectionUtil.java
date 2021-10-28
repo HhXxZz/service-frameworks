@@ -3,14 +3,16 @@ package base.service.frameworks.utils;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.shardingsphere.api.config.masterslave.MasterSlaveRuleConfiguration;
-import org.apache.shardingsphere.shardingjdbc.api.MasterSlaveDataSourceFactory;
+import org.apache.shardingsphere.driver.api.ShardingSphereDataSourceFactory;
+import org.apache.shardingsphere.driver.api.yaml.YamlShardingSphereDataSourceFactory;
+import org.apache.shardingsphere.readwritesplitting.api.ReadwriteSplittingRuleConfiguration;
+import org.apache.shardingsphere.readwritesplitting.api.rule.ReadwriteSplittingDataSourceRuleConfiguration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -79,29 +81,37 @@ public enum  ConnectionUtil {
         if(mInitialed.compareAndSet(false, true)) {
             InputStream ins = null;
             try {
-                ins = ConnectionUtil.class.getClassLoader().getResourceAsStream("db.properties");
-                Properties pro = new Properties();
-                if (ins != null) {
-                    pro.load(ins);
-                } else {
-                    LOG.error("MISSING : db.cfg.properties !");
-                    mInitialed.set(false);
-                    pro.load(new StringReader(""));
+//                ins = ConnectionUtil.class.getClassLoader().getResourceAsStream("db.properties");
+//                Properties pro = new Properties();
+//                if (ins != null) {
+//                    pro.load(ins);
+//                } else {
+//                    LOG.error("MISSING : db.cfg.properties !");
+//                    mInitialed.set(false);
+//                    pro.load(new StringReader(""));
+//                }
+//                List<String> sources = GsonUtil.listFromJson(pro.getProperty("sources","[]"),String[].class);
+//                if(sources.isEmpty()){
+//                    LOG.error("MISSING : sources !");
+//                    mInitialed.set(false);
+//                    pro.load(new StringReader(""));
+//                }
+//                List<DataSource> list = buildDataSource(sources,pro);
+//                if(list.size() == 1){
+//                    //单个数据库连接
+//                    dataSource = list.get(0);
+//                }else{
+//                    //多个数据库连接
+//                    dataSource = buildMasterSlaveDataSource(sources,list);
+//                }
+
+
+                File file = new File(Objects.requireNonNull(ConnectionUtil.class.getClassLoader().getResource("db.yaml")).getPath());
+                if(!file.exists()){
+                    LOG.error("MISSING : db.properties !");
+                    return;
                 }
-                List<String> sources = GsonUtil.listFromJson(pro.getProperty("sources","[]"),String[].class);
-                if(sources.isEmpty()){
-                    LOG.error("MISSING : sources !");
-                    mInitialed.set(false);
-                    pro.load(new StringReader(""));
-                }
-                List<DataSource> list = buildDataSource(sources,pro);
-                if(list.size() == 1){
-                    //单个数据库连接
-                    dataSource = list.get(0);
-                }else{
-                    //多个数据库连接
-                    dataSource = buildMasterSlaveDataSource(sources,list);
-                }
+                dataSource = YamlShardingSphereDataSourceFactory.createDataSource(file);
                 jdbc = new JdbcTemplate(dataSource);
             } catch (IOException ex) {
                 LOG.error( "Parsing Error : db.cfg.properties !",ex);
@@ -160,9 +170,20 @@ public enum  ConnectionUtil {
                 slaveSourceName.add(tempName);
             }
         }
-        System.out.println(GsonUtil.toJson(slaveSourceName));
-        MasterSlaveRuleConfiguration masterSlaveRuleConfig = new MasterSlaveRuleConfiguration("ds_master_slave", master, slaveSourceName);
-        return MasterSlaveDataSourceFactory.createDataSource(dataSourceMap, masterSlaveRuleConfig, new Properties());
+
+        Properties pros = new Properties();
+        pros.setProperty("sql.show","true");
+
+        // 读写数据源配置
+        ReadwriteSplittingDataSourceRuleConfiguration dataSourceRuleConfiguration = new ReadwriteSplittingDataSourceRuleConfiguration(
+                        "master_slave_db", null, master, slaveSourceName, "ROUND_ROBIN");
+
+        // 读写分离配置
+        ReadwriteSplittingRuleConfiguration readwriteSplittingRuleConfiguration = new ReadwriteSplittingRuleConfiguration(
+                        Collections.singleton(dataSourceRuleConfiguration), new HashMap<>());
+
+        // 创建 ShardingSphereDataSource
+        return ShardingSphereDataSourceFactory.createDataSource(dataSourceMap, Collections.singleton(readwriteSplittingRuleConfiguration), pros);
     }
 
 

@@ -1,8 +1,6 @@
 package base.service.frameworks.dao;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.apache.shardingsphere.api.config.masterslave.MasterSlaveRuleConfiguration;
-import org.apache.shardingsphere.shardingjdbc.api.MasterSlaveDataSourceFactory;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -36,12 +34,6 @@ public class ShardingJdbc {
         slaveDataSource1.setUsername("root");
         slaveDataSource1.setPassword("123456");
         dataSourceMap.put("ds_slave0", slaveDataSource1);
-
-        // 配置读写分离规则
-        MasterSlaveRuleConfiguration masterSlaveRuleConfig = new MasterSlaveRuleConfiguration("ds_master_slave", "ds_master", Arrays.asList("ds_slave0"));
-
-        // 获取数据源对象
-        DataSource dataSource = MasterSlaveDataSourceFactory.createDataSource(dataSourceMap, masterSlaveRuleConfig, new Properties());
 
     }
 

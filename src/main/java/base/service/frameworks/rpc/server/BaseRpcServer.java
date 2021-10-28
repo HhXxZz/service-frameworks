@@ -7,6 +7,7 @@ import base.service.frameworks.rpc.common.MessageResponseEncoder;
 import base.service.frameworks.base.ApiFactory;
 import base.service.frameworks.rpc.common.ServiceInfo;
 import base.service.frameworks.rpc.nacos.NacosManager;
+import base.service.frameworks.utils.ConnectionUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -85,6 +86,10 @@ public class BaseRpcServer {
             ChannelFuture future = bootstrap.bind(host,port).sync();
             if(future.isSuccess()){
                 logger.info("Server started on port {}", port);
+            }
+
+            if(Config.isDAOEnabled()){
+                ConnectionUtil.INSTANCE.init();
             }
 
             future.channel().closeFuture().sync();

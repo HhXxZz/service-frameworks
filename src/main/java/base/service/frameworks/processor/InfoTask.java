@@ -1,5 +1,6 @@
 package base.service.frameworks.processor;
 
+import base.service.frameworks.dao.CommonDao;
 import base.service.frameworks.misc.Parameters;
 import base.service.frameworks.processor.annotation.API;
 import base.service.frameworks.base.ApiFactory;
@@ -33,10 +34,12 @@ public class InfoTask extends BaseTask {
        // String data = mParams.getString("data","");
        // RedisClient.INSTANCE.set(id,data);
 
-        Map<String,String>map = new HashMap<>();
-        map.put("id", RedisClient.INSTANCE.get(id));
+        CommonDao.INSTANCE.addUser();
+
+//        Map<String,String>map = new HashMap<>();
+//        map.put("id", RedisClient.INSTANCE.get(id));
         //map.put("data", RedisClient.INSTANCE.get("data"));
 
-        return successResponse(map);
+        return successResponse(CommonDao.INSTANCE.getUserList());
     }
 }
