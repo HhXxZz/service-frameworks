@@ -50,8 +50,10 @@ public enum  SocketServer {
 
 
     private void onGroupMessageEvent(SocketIOClient pClient, String pData, AckRequest pAckRequest) {
-        logger.info("onGroupMessageEvent"+pData);
-        pAckRequest.sendAckData("aa");
+        logger.info("onGroupMessageEvent:"+pData);
+       // pAckRequest.sendAckData("aa");
+       // pClient.getBroadcastOperations().sendEvent("EVENT_GROUP_MESSAGE", data);
+        pClient.sendEvent(EVENT_GROUP_MESSAGE,"收拾收拾收拾收拾收拾收拾书");
     }
 
 

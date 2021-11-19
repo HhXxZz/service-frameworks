@@ -43,7 +43,7 @@ public abstract class BaseServer {
     // Constants
     // ===========================================================
     private static final Logger LOG = LogManager.getLogger(BaseServer.class);
-    private static final int    PORT = Config.getPort();
+    private static final int    PORT = Config.getIntProperty("server.port",8686);
 
     private Channel         mChannel;
     private EventLoopGroup  mBossGroup;

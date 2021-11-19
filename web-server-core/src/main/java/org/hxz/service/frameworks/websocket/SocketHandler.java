@@ -1,5 +1,6 @@
 package org.hxz.service.frameworks.websocket;
 
+import org.apache.commons.lang3.StringUtils;
 import org.hxz.service.frameworks.socket.ws.CommonSocketIOServer;
 import org.hxz.service.frameworks.utils.GsonUtil;
 import com.corundumstudio.socketio.HandshakeData;
@@ -17,35 +18,46 @@ public class SocketHandler implements CommonSocketIOServer.CommonSocketIOHandler
 
     @Override
     public void handleNewClient(SocketIOClient pClient) {
-        logger.info("handleNewClient:"+ GsonUtil.toJson(pClient.getHandshakeData()));
+        logger.info("handleNewClient:");
+
+        String uid = pClient.getHandshakeData().getSingleUrlParam("uid");
+        String token = pClient.getHandshakeData().getSingleUrlParam("token");
+        pClient.set("uid", uid);
+        pClient.set("token", token);
     }
 
     @Override
     public boolean authorizationEnabled() {
         logger.info("authorizationEnabled:");
-        return false;
+        return true;
     }
 
     @Override
     public String parsePrincipal(SocketIOClient pClient) {
-        logger.info("parsePrincipal:"+ GsonUtil.toJson(pClient.getHandshakeData()));
-        return null;
+        logger.info("parsePrincipal:");
+        return pClient.getHandshakeData().getSingleUrlParam("uid");
     }
 
     @Override
     public String parseCredentials(SocketIOClient pClient) {
-        logger.info("parseCredentials:"+ GsonUtil.toJson(pClient.getHandshakeData()));
-        return null;
+        //logger.info("parseCredentials:");
+        return pClient.getHandshakeData().getSingleUrlParam("token");
     }
 
     @Override
     public void releaseClient(SocketIOClient pClient) {
-        logger.info("releaseClient:"+ GsonUtil.toJson(pClient.getHandshakeData()));
+        logger.info("releaseClient:");
     }
 
     @Override
     public boolean isAuthorized(HandshakeData data) {
-        logger.info("isAuthorized:"+ GsonUtil.toJson(data));
+        //logger.info("isAuthorized:"+GsonUtil.toJson(data));
+
+        String uid = data.getSingleUrlParam("uid");
+        String token = data.getSingleUrlParam("token");
+        if(StringUtils.isNotBlank(uid) && StringUtils.isNotBlank(token)){
+            return true;
+        }
         return false;
     }
 }

@@ -284,6 +284,8 @@ public class CommonSocketIOServer {
         String credentials = mHandler.parseCredentials(pClient);
         String sessionID   = pClient.getSessionId().toString();
         String namespace   = pClient.getNamespace().getName();
+        LOG.info("[{}] connected principal[{}] credentials[{}] session[{}] namespace[{}]",
+                mServerName, principal, credentials,sessionID, namespace);
 
         if (StringUtil.isEmpty(principal)) {
             // 无法获取到具体身份，断开连接
@@ -291,11 +293,9 @@ public class CommonSocketIOServer {
             pClient.disconnect();
             return;
         }
-
-        LOG.debug("[{}] connected principal[{}] session[{}] namespace[{}] query {}",
-                mServerName, principal, sessionID, namespace,
-                GsonUtil.toJson(pClient.getHandshakeData().getUrlParams()));
-
+        LOG.debug("[{}] connected principal[{}] session[{}] namespace[{}]",
+                mServerName, principal, sessionID, namespace);
+        //,GsonUtil.toJson(pClient.getHandshakeData().getUrlParams()));
         pClient.set(PROPERTY_PRINCIPAL, principal);
         pClient.set(PROPERTY_CREDENTIALS, credentials);
         pClient.set(PROPERTY_IP, getClientRealIP(pClient));
@@ -386,7 +386,7 @@ public class CommonSocketIOServer {
 
     public int cleanZombieClient() {
         // 清除未进入 mClientSessions 中的连接
-        //    通常相同principal的连接最后一个会进入mClientSessions，之前的连接会被断开，并受到logout事件
+        //    通常相同principal的后连接最一个会进入mClientSessions，之前的连接会被断开，并受到logout事件
         //    特殊情况中，之前的连接没有断开，并存在于server连接池中，此时它们就不再收到定向推送
         Collection<SocketIOClient> clients = mServer.getAllClients();
         int                        count   = 0;

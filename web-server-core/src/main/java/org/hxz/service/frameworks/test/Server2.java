@@ -12,10 +12,10 @@ public class Server2 {
     private static final CountDownLatch latch = new CountDownLatch(1);
 
     public static void main(String[] args) throws InterruptedException {
-        String host = "127.0.0.1";
-        int port = 9889;
-        BaseRpcServer rpcServer = new BaseRpcServer(host,port);
-        rpcServer.start();
+//        String host = "127.0.0.1";
+//        int port = 9889;
+//        BaseRpcServer rpcServer = new BaseRpcServer("");
+//        rpcServer.start();
 
 
 

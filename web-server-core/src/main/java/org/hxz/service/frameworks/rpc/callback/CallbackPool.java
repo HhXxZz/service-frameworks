@@ -3,7 +3,7 @@ package org.hxz.service.frameworks.rpc.callback;
 import org.hxz.service.frameworks.rpc.common.MessageResponse;
 import io.netty.channel.Channel;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 /**
  * 客户端回调池，用于保存调用发送请求出去的{@link CallbackContext}上下文，用于nio异步通信收到服务端响应后回调成功或者失败
@@ -30,6 +30,10 @@ public class CallbackPool {
      */
     private static final ConcurrentHashMap<String, CallbackContext> CALLBACK_MAP = new ConcurrentHashMap<>(
             INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+    private static final ConcurrentHashMap<String, ScheduledFuture<?>> TIMEOUT_MAP = new ConcurrentHashMap<>(
+            INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+
+    private static final ScheduledExecutorService TIMEOUT_POOL = Executors.newScheduledThreadPool(2);
 
     /**
      * 根据requestId标示获取上下文
@@ -70,6 +74,14 @@ public class CallbackPool {
             boolean isShortAliveConn, Channel channel, Callback<MessageResponse> callback) {
         CALLBACK_MAP.putIfAbsent(requestId, new CallbackContext(requestId, System.currentTimeMillis(),
                 timeout, isShortAliveConn, channel, callback));
+        if(timeout > 0){
+            ScheduledFuture<?> schedule = TIMEOUT_POOL.schedule(() -> {
+                CallbackContext callbackContext = CALLBACK_MAP.get(requestId);
+                callbackContext.getCallback().handleError(new TimeoutException("CallbackPool time out: " + timeout + "ms, id:" + requestId));
+                TIMEOUT_MAP.remove(requestId);
+            }, timeout, TimeUnit.MILLISECONDS);
+            TIMEOUT_MAP.put(requestId,schedule);
+        }
     }
 
     /**
@@ -79,6 +91,10 @@ public class CallbackPool {
      */
     public static void remove(String requestId) {
         CALLBACK_MAP.remove(requestId);
+        ScheduledFuture<?> scheduledFuture = TIMEOUT_MAP.remove(requestId);
+        if(scheduledFuture != null) {
+            scheduledFuture.cancel(false);
+        }
     }
 
     /**

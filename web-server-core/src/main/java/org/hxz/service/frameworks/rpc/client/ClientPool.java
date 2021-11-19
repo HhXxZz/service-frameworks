@@ -25,8 +25,8 @@ public class  ClientPool {
 
     private final GenericObjectPool<ClientChannel> objectPool;
     private final int readTimeout;
-    private String id;
-    private ClientChannel channel;
+    private final String id;
+    private final ClientChannel channel;
 
     public ClientPool(String host, int port,int readTimeout) {
         this.id = UUID.randomUUID().toString();

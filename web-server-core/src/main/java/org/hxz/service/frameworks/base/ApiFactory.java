@@ -70,13 +70,13 @@ public enum  ApiFactory {
 		API api;
 		ApiInfo apiInfo;
 		List<ApiInfo> apiList = new ArrayList<>();
-		for(String module : ROUTE_MAP.keySet()){
-			actionList = ROUTE_MAP.get(module);
+		for(String serviceName : ROUTE_MAP.keySet()){
+			actionList = ROUTE_MAP.get(serviceName);
 			for (String url : actionList.keySet()) {
 				clazz = actionList.get(url);
 				api = clazz.getAnnotation(API.class);
 				apiInfo = new ApiInfo();
-				apiInfo.setModule(module);
+				apiInfo.setServiceName(serviceName);
 				apiInfo.setUrl(url);
 				apiInfo.setName(api.name());
 				apiInfo.setVersion(api.version());
@@ -94,7 +94,7 @@ public enum  ApiFactory {
 
 
 	public static class ApiInfo {
-		private String module;
+		private String serviceName;
 		private String url;
 		private String name;
 		private Boolean enableToken;
@@ -107,12 +107,12 @@ public enum  ApiFactory {
 
 		public ApiInfo(){}
 
-		public String getModule() {
-			return module;
+		public String getServiceName() {
+			return serviceName;
 		}
 
-		public void setModule(String module) {
-			this.module = module;
+		public void setServiceName(String serviceName) {
+			this.serviceName = serviceName;
 		}
 
 		public String getUrl() {

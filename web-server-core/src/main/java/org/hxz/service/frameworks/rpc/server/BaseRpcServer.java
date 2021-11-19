@@ -21,45 +21,30 @@ import org.apache.logging.log4j.Logger;
  * Created by hxz on 2021/6/29 14:31.
  */
 
-public class BaseRpcServer {
+public abstract class BaseRpcServer {
     private static final Logger logger = LogManager.getLogger(BaseRpcServer.class);
 
-    private String host;
-    private int port;
-    private ServiceInfo serviceInfo;
+    private final String host;
+    private final int port;
 
-    public BaseRpcServer(String host,int port){
-        //String address = Config.getProperty("zk.address","127.0.0.1:2181,127.0.0.1:3181,127.0.0.1:4181");
-        String address = Config.getProperty("zk.address","127.0.0.1:8848");
-        String product = Config.getProperty("zk.product","service");
-        String business = Config.getProperty("zk.business","example");
-//        this.host = Config.getProperty("server.host","127.0.0.1");
-//        this.port = Config.getIntProperty("server.port",9898);
-        this.host = host;
-        this.port = port;
+    public BaseRpcServer(){
+        String address = Config.getProperty("nacos.address","127.0.0.1:8848");
+        String serviceName = Config.getProperty("nacos.serviceName","service");
+        host = Config.getProperty("server.host","127.0.0.1");;
+        port = Config.getIntProperty("server.port",9898);;
 
-        serviceInfo = new ServiceInfo();
+        NacosManager.INSTANCE.init(address);
+
+        ServiceInfo serviceInfo = new ServiceInfo();
         serviceInfo.setServerAddress(address);
         serviceInfo.setHost(host);
         serviceInfo.setPort(port);
-        serviceInfo.setServiceName(product);
-
-//        serviceInfo.setProduct(product);
-//        serviceInfo.setModule(business);
-
-        ApiFactory.INSTANCE.init(serviceInfo,"base.service.frameworks.processor");
+        serviceInfo.setServiceName(serviceName);
+        ApiFactory.INSTANCE.init(serviceInfo,initApiPackage());
         serviceInfo.setApiList(ApiFactory.INSTANCE.getApiList());
-
-//        ServiceRegistry serviceRegistry = new ServiceRegistry(serviceInfo);
-//        serviceRegistry.register();
-
-        NacosManager.INSTANCE.init(address);
         NacosManager.INSTANCE.register(serviceInfo);
-
         RedisClient.INSTANCE.init();
-
     }
-
 
     public void start() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
@@ -87,16 +72,14 @@ public class BaseRpcServer {
             if(future.isSuccess()){
                 logger.info("Server started on port {}", port);
             }
-
-            if(Config.isDAOEnabled()){
-                ConnectionUtil.INSTANCE.init();
-            }
-
+            ConnectionUtil.INSTANCE.init();
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
     }
+
+    protected abstract String initApiPackage();
 
 }

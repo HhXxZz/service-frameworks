@@ -1,3 +1,9 @@
+import com.corundumstudio.socketio.AckMode;
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOServer;
+import com.corundumstudio.socketio.Transport;
+import io.netty.channel.epoll.Epoll;
+import io.netty.util.internal.PlatformDependent;
 import org.hxz.service.frameworks.websocket.SocketServer;
 
 /**
