@@ -1,6 +1,8 @@
 package org.hxz.service.frameworks.base;
 
+import org.hxz.service.frameworks.misc.Code;
 import org.hxz.service.frameworks.misc.Parameters;
+import org.hxz.service.frameworks.processor.BaseTask;
 import org.hxz.service.frameworks.rpc.client.ClientPool;
 import org.hxz.service.frameworks.rpc.common.MessageRequest;
 import org.hxz.service.frameworks.rpc.common.MessageResponse;
@@ -84,26 +86,28 @@ public class BaseServerHandler extends SimpleChannelInboundHandler<FullHttpReque
             //MessageResponse responseStr = new MessageResponse();
             //responseStr.setData("aaaa");
 
-            System.out.println("response:"+responseStr.getData());
-            FullHttpResponse response = new DefaultFullHttpResponse(
-                    HTTP_1_1, OK,
-                    Unpooled.copiedBuffer(responseStr.getData(), CharsetUtil.UTF_8));
-
-            response.headers().set(CONTENT_TYPE, Content_Type_Application_Json);
-
-            if (HttpUtil.isKeepAlive(request)) {
-                // Add 'Content-Length' header only for a keep-alive connection.
-                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
-                // Add keep alive header as per:
-                // - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
-                response.headers().set(CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-            }
-
-            ctx.writeAndFlush(response);
+            writeJsonResponse(request,ctx,responseStr.getData());
 
         }catch (Exception e){
             logger.error("handler.error",e);
+            writeJsonResponse(request,ctx,BaseTask.errorResponse(Code.BaseCode.ERR_DEFAULT));
         }
+    }
+
+
+    private void writeJsonResponse(FullHttpRequest request,ChannelHandlerContext ctx,String responseStr){
+        FullHttpResponse response = new DefaultFullHttpResponse(
+                HTTP_1_1, OK,
+                Unpooled.copiedBuffer(responseStr, CharsetUtil.UTF_8));
+        response.headers().set(CONTENT_TYPE, Content_Type_Application_Json);
+        if (HttpUtil.isKeepAlive(request)) {
+            // Add 'Content-Length' header only for a keep-alive connection.
+            response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+            // Add keep alive header as per:
+            // - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
+            response.headers().set(CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        }
+        ctx.writeAndFlush(response);
     }
 
     @Override
@@ -112,9 +116,6 @@ public class BaseServerHandler extends SimpleChannelInboundHandler<FullHttpReque
         if(!message.contains("Connection reset by peer") && !message.contains("远程主机强迫关闭了一个现有的连接")){
             logger.error(pCause.getMessage(), pCause);
         }
-//        logger.error("exceptionCaught.error",pCause);
-//        ctx.flush();
-//        ctx.channel().close();
     }
 
     // ===========================================================

@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public enum  SocketServer {
     INSTANCE;
 
-    public static final String EVENT_GROUP_MESSAGE = "EVENT_GROUP_MESSAGE";
+    public static final String EVENT_MESSAGE = "EVENT_MESSAGE";
 
     private static final Logger logger = LogManager.getLogger(SocketServer.class);
     private final AtomicBoolean mInitialed = new AtomicBoolean(false);
@@ -42,7 +42,7 @@ public enum  SocketServer {
             mServer = CommonSocketIOServer.create("IM-SERVICE", HOST, PORT, new SocketHandler(), "/im", null, AckMode.MANUAL);
 
             // 群聊相关
-            mServer.on(EVENT_GROUP_MESSAGE, String.class, this::onGroupMessageEvent);
+            mServer.on(EVENT_MESSAGE, String.class, this::onGroupMessageEvent);
 
             mServer.start();
         }
@@ -53,7 +53,7 @@ public enum  SocketServer {
         logger.info("onGroupMessageEvent:"+pData);
        // pAckRequest.sendAckData("aa");
        // pClient.getBroadcastOperations().sendEvent("EVENT_GROUP_MESSAGE", data);
-        pClient.sendEvent(EVENT_GROUP_MESSAGE,"收拾收拾收拾收拾收拾收拾书");
+        pClient.sendEvent(EVENT_MESSAGE,"收拾收拾收拾收拾收拾收拾书");
     }
 
 

@@ -1,12 +1,12 @@
 dataSources:
-  master:
+  db0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:7706/base_user?autoReconnect=true&autoReconnectForPools=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&rewriteBatchedStatements=true&useAffectedRows=true&serverTimezone=GMT%2B8
-    username: root
+    username: hxz
     password: 123456
 
-  slave1:
+  db1:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:7707/base_user?autoReconnect=true&autoReconnectForPools=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&rewriteBatchedStatements=true&useAffectedRows=true&serverTimezone=GMT%2B8
@@ -14,17 +14,55 @@ dataSources:
     password: 123456
 
 rules:
-- !READWRITE_SPLITTING
-  dataSources:
-    db: # 读写分离逻辑数据源名称
-      writeDataSourceName: master # 写库数据源名称
-      readDataSourceNames: [slave1]
-      loadBalancerName: roundRobin # 负载均衡算法名称
-      # queryConsistent: true # 是否启用查询一致性路由
-  # 负载均衡算法配置
-  loadBalancers:
-    roundRobin:
-      type: ROUND_ROBIN
+  # 配置分片规则
+  - !SHARDING
+    tables:
+      # 配置 user 表规则
+      user:
+        actualDataNodes: db${0..1}.user_${0..9}
+        # 配置分库策略
+        databaseStrategy:
+          standard:
+            shardingColumn: uid
+            shardingAlgorithmName: database_inline
+        # 配置分表策略
+        tableStrategy:
+          standard:
+            shardingColumn: uid
+            shardingAlgorithmName: table_inline
+        # 分布式序列策略
+        keyGenerateStrategy:
+          column: uid
+          keyGeneratorName: snowflake
+    # 配置分片算法CommonDao
+    shardingAlgorithms:
+      database_inline:
+        type: HASH_MOD
+        props:
+          sharding-count: 2
+#          algorithm-expression: db${uid % 2}
+      table_inline:
+        type: INLINE
+        props:
+          algorithm-expression: user_${uid % 10}
+
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+        props:
+          worker-id: 22
+
+#- !READWRITE_SPLITTING
+#  dataSources:
+#    db: # 读写分离逻辑数据源名称
+#      writeDataSourceName: master # 写库数据源名称
+#      readDataSourceNames: [slave1]
+#      loadBalancerName: roundRobin # 负载均衡算法名称
+#      # queryConsistent: true # 是否启用查询一致性路由
+#  # 负载均衡算法配置
+#  loadBalancers:
+#    roundRobin:
+#      type: ROUND_ROBIN
 
 props:
   sql-show: true

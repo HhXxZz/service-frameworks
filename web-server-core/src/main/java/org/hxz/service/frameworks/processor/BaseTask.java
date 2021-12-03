@@ -6,12 +6,14 @@ import org.hxz.service.frameworks.misc.Code;
 import org.hxz.service.frameworks.misc.Parameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
 
+@Component
 public abstract class BaseTask {
     // ===========================================================
     // Constants
     // ===========================================================
-    private static final Logger logger = LogManager.getLogger(BaseTask.class);
+    protected static final Logger logger = LogManager.getLogger(BaseTask.class);
 
     protected Parameters mParams;
     protected String                mCallback;

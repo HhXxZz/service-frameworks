@@ -38,7 +38,7 @@ public class XHttpServer extends BaseServer {
 //		serviceInfo.setModule(business);
 
 
-		NacosManager.INSTANCE.init(address);
+		//NacosManager.INSTANCE.init(address);
 
 		List<String> serviceNameList = new ArrayList<>();
 		serviceNameList.add(serviceName);

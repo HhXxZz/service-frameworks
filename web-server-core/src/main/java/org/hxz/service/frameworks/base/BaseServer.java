@@ -1,6 +1,9 @@
 package org.hxz.service.frameworks.base;
 
 import org.hxz.service.frameworks.misc.Config;
+import org.hxz.service.frameworks.rpc.common.ServiceInfo;
+import org.hxz.service.frameworks.rpc.nacos.NacosManager;
+import org.hxz.service.frameworks.utils.AppContext;
 import org.hxz.service.frameworks.utils.ConnectionUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -24,6 +27,13 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.internal.PlatformDependent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hxz.service.frameworks.utils.GsonUtil;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 import static io.netty.handler.codec.http.HttpMethod.*;
 
@@ -38,12 +48,14 @@ import static io.netty.handler.codec.http.HttpMethod.*;
  * <br/>·{@link BaseServer#release()} 退出时需要释放的业务内容
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
+@Component
+@ComponentScan("org.hxz")
+@EnableAutoConfiguration
 public abstract class BaseServer {
     // ===========================================================
     // Constants
     // ===========================================================
     private static final Logger LOG = LogManager.getLogger(BaseServer.class);
-    private static final int    PORT = Config.getIntProperty("server.port",8686);
 
     private Channel         mChannel;
     private EventLoopGroup  mBossGroup;
@@ -70,87 +82,88 @@ public abstract class BaseServer {
     // ===========================================================
     @SuppressWarnings("AnonymousHasLambdaAlternative")
     public void start() {
-        if(Config.isInitialed() && PORT > 0) {
-            checkEnvironment();
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    shutdown();
-                }
-            });
+        checkEnvironment();
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                shutdown();
+            }
+        });
+        Environment environment = AppContext.getBean(Environment.class);
+        int PORT = environment.getProperty("gateway.port", Integer.class, 18888);
 
-            mBossGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
-            mWorkerGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
 
-            /**
-             * 1、如果所有客户端的并发连接数小于业务线程数，那么建议将请求消息封装成任务投递到后端普通业务线程池执行即可，ChannelHandler不需要处理复杂业务逻辑，也不需要再绑定EventExecutorGroup
-             *
-             * 2、如果所有客户端的并发连接数大于等于业务需要配置的线程数，那么可以为业务ChannelHandler绑定EventExecutorGroup——使用addLast的方法
-             */
-            executorGroup = new DefaultEventExecutorGroup(8, new DefaultThreadFactory("biz"));
+        mBossGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
+        mWorkerGroup = isEpollAvailable ? new EpollEventLoopGroup() : new NioEventLoopGroup(); // 默认CPU核数 * 2
 
-            try {
-                ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
-                // ===========================================================
-                // Fields
-                // ===========================================================
-                ServerBootstrap mBootstrap = new ServerBootstrap();
-                mBootstrap.group(mBossGroup, mWorkerGroup)
-                        .channel(isEpollAvailable ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
-                        .option(ChannelOption.SO_BACKLOG, 100)
-                        .handler(new LoggingHandler(LogLevel.INFO))
-                        .childHandler(new ChannelInitializer<SocketChannel>() {
-                            @Override
-                            protected void initChannel(SocketChannel ch) {
-                                ChannelPipeline pipeline = ch.pipeline();
-                                pipeline.addLast(new HttpRequestDecoder());
-                                pipeline.addLast(new HttpResponseEncoder());
-                                pipeline.addLast(new HttpObjectAggregator(1048576));
-                                pipeline.addLast(new ChunkedWriteHandler());
-                                pipeline.addLast(new CorsHandler(
-                                        CorsConfigBuilder
-                                                .forAnyOrigin()
-                                                .allowedRequestMethods(OPTIONS, GET, POST, PUT, DELETE)
-                                                .allowedRequestHeaders("X-Requested-With", "Content-Type", "Content-Length")
-                                                .allowCredentials()
-                                                .build()
-                                ));
-                                pipeline.addLast(executorGroup, new BaseServerHandler());
-                                initCustomChannel(pipeline);
-                            }
-                        });
-                mChannel = mBootstrap.bind(PORT).sync().channel();
-                LOG.info("Server start in http://127.0.0.1:{}", PORT);
-                // 自动加载进行初始化
+        /**
+         * 1、如果所有客户端的并发连接数小于业务线程数，那么建议将请求消息封装成任务投递到后端普通业务线程池执行即可，ChannelHandler不需要处理复杂业务逻辑，也不需要再绑定EventExecutorGroup
+         *
+         * 2、如果所有客户端的并发连接数大于等于业务需要配置的线程数，那么可以为业务ChannelHandler绑定EventExecutorGroup——使用addLast的方法
+         */
+        executorGroup = new DefaultEventExecutorGroup(8, new DefaultThreadFactory("biz"));
+
+        try {
+            ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
+            // ===========================================================
+            // Fields
+            // ===========================================================
+            ServerBootstrap mBootstrap = new ServerBootstrap();
+            mBootstrap.group(mBossGroup, mWorkerGroup)
+                    .channel(isEpollAvailable ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
+                    .option(ChannelOption.SO_BACKLOG, 100)
+                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            ChannelPipeline pipeline = ch.pipeline();
+                            pipeline.addLast(new HttpRequestDecoder());
+                            pipeline.addLast(new HttpResponseEncoder());
+                            pipeline.addLast(new HttpObjectAggregator(1048576));
+                            pipeline.addLast(new ChunkedWriteHandler());
+                            pipeline.addLast(new CorsHandler(
+                                    CorsConfigBuilder
+                                            .forAnyOrigin()
+                                            .allowedRequestMethods(OPTIONS, GET, POST, PUT, DELETE)
+                                            .allowedRequestHeaders("X-Requested-With", "Content-Type", "Content-Length")
+                                            .allowCredentials()
+                                            .build()
+                            ));
+                            pipeline.addLast(executorGroup, new BaseServerHandler());
+                            initCustomChannel(pipeline);
+                        }
+                    });
+            mChannel = mBootstrap.bind(PORT).sync().channel();
+            LOG.info("Server start in http://127.0.0.1:{}", PORT);
+            // 自动加载进行初始化
 //                Request.Builder builder= new Request.Builder();
 //                builder.url("http://127.0.0.1:"+PORT+"/test/test");
 //                String resp = HTTPUtil.INSTANCE.execute(builder.build());
 //                System.out.println(resp);
-                //初始化数据库
+            //初始化数据库
 //                if(Config.isDAOEnabled()){
 //                    ConnectionUtil.INSTANCE.init();
 //                }
-                //初始化抽象函数
-                init();
+            //初始化抽象函数
+            nacosInit();
+            init();
 
-                mChannel.closeFuture().sync();
-            } catch (InterruptedException e) {
-                LOG.error("Server start failed!", e);
-            } finally {
-                try {
-                    mBossGroup.shutdownGracefully().sync();
-                } catch (Exception ignore) {
-                    LOG.warn("mBossGroup shutdown fail");
-                }
-                try {
-                    mWorkerGroup.shutdownGracefully().sync();
-                } catch (Exception ignore) {
-                    LOG.warn("mWorkerGroup shutdown fail");
-                }
+            mChannel.closeFuture().sync();
+        } catch (InterruptedException e) {
+            LOG.error("Server start failed!", e);
+        } finally {
+            try {
+                mBossGroup.shutdownGracefully().sync();
+            } catch (Exception ignore) {
+                LOG.warn("mBossGroup shutdown fail");
             }
-        }else{
-            LOG.error("Config unavailable! Exit!");
+            try {
+                mWorkerGroup.shutdownGracefully().sync();
+            } catch (Exception ignore) {
+                LOG.warn("mWorkerGroup shutdown fail");
+            }
         }
+
     }
 
     private void shutdown() {
@@ -182,6 +195,22 @@ public abstract class BaseServer {
         }
     }
 
+    private void nacosInit(){
+        Environment environment = AppContext.getBean(Environment.class);
+
+        String nacosAddress = environment.getProperty("nacos.address","127.0.0.1:8848");
+        String nacosProduct = environment.getProperty("nacos.product","product");
+        String nacosModule = environment.getProperty("nacos.module","module");
+        String nacosServices = environment.getProperty("nacos.services", "[\"service\"]");
+
+        ServiceInfo serviceInfo = new ServiceInfo();
+        serviceInfo.setServerAddress(nacosAddress);
+        NacosManager.INSTANCE.init(nacosAddress);
+
+        List<String> serviceNameList = GsonUtil.listFromJson(nacosServices,String[].class);
+        NacosManager.INSTANCE.subscribe(serviceNameList);
+    }
+
     private void checkEnvironment() {
         if (!PlatformDependent.isWindows()) {
             LOG.debug("Server not on Windows, checking EPOLL status.");
@@ -195,6 +224,8 @@ public abstract class BaseServer {
             LOG.debug("Server on Windows, use NIO.");
         }
     }
+
+
 
     /**
      * 释放资源，子类继承实现

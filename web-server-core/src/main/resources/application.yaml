@@ -1,0 +1,21 @@
+nacos:
+  address: 127.0.0.1:8848
+  product: product
+  module: ["imService","user"]
+spring:
+  port: 22222
+  redis:
+    database: 0
+    host: 127.0.0.1
+    port: 6379
+#    lettuce:
+#      pool:
+#        #最大连接数据库连接数,设 0 为没有限制
+#        max-active: 8
+#        #最大等待连接中的数量,设 0 为没有限制
+#        max-idle: 8
+#        #最大建立连接等待时间。如果超过此时间将接到异常。设为-1表示无限制。
+#        max-wait: 1
+#        #最小等待连接中的数量,设 0 为没有限制
+#        min-idle: 0
+    timeout: 1000

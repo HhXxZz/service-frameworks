@@ -20,7 +20,7 @@ public class SocketClientTest {
         mSocket.connect();
 
 
-        mSocket.on("EVENT_GROUP_MESSAGE", new Emitter.Listener() {
+        mSocket.on("EVENT_MESSAGE", new Emitter.Listener() {
             @Override
             public void call(Object... objects) {
                 System.out.println(objects[0].toString());
@@ -28,7 +28,7 @@ public class SocketClientTest {
         });
 
 
-        mSocket.emit("EVENT_GROUP_MESSAGE","a");
+        mSocket.emit("EVENT_MESSAGE","a");
 
         Thread.sleep(Integer.MAX_VALUE);
 
