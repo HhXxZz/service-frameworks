@@ -50,7 +50,7 @@ import static io.netty.handler.codec.http.HttpMethod.*;
 @SuppressWarnings({"unused", "WeakerAccess"})
 @Component
 @ComponentScan("org.hxz")
-@EnableAutoConfiguration
+@EnableAutoConfiguration(exclude = {org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration.class})
 public abstract class BaseServer {
     // ===========================================================
     // Constants

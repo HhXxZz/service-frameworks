@@ -8,14 +8,16 @@
         <version>1.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-
+    <properties>
+        <SpringBootVersion>2.6.0</SpringBootVersion>
+    </properties>
     <artifactId>web-server-core</artifactId>
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>2.6.0</version>
+                <version>${SpringBootVersion}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -98,6 +100,10 @@
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-quartz</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -429,6 +435,22 @@
                     <groupId>io.netty</groupId>
                     <artifactId>netty-transport-native-epoll</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.apache.shardingsphere</groupId>
+                    <artifactId>shardingsphere-sql-parser-oracle</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.shardingsphere</groupId>
+                    <artifactId>shardingsphere-sql-parser-postgresql</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.shardingsphere</groupId>
+                    <artifactId>shardingsphere-sql-parser-sqlserver</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.shardingsphere</groupId>
+                    <artifactId>shardingsphere-sql-parser-oracle</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -457,6 +479,7 @@
                     <include>**/*.properties</include>
                     <include>**/*.xml</include>
                     <include>**/*.yaml</include>
+                    <include>**/*.yml</include>
                 </includes>
             </resource>
             <!--            <resource>-->

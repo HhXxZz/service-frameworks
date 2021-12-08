@@ -1,23 +1,23 @@
 # service-frameworks
 springboot+netty+nacos的RPC 微服务框架
 
-#gateway
+# gateway
 使用netty封装的http服务
 
-#server
+# server
 使用netty+protostuff序列化的RPC调用
 
-#db
+# db
 使用shardingsphere+mybatisplus，支持分库分表
 
-#cache
+# cache
 使用lettuce的redis，支持分布式redis节点
 
-#socket
+# socket
 使用socketIO
 
-#other
+# other
 使用springboot全家桶的功能，ioc，自动注入
 
-#TODO
+# TODO
 seata分布式事务

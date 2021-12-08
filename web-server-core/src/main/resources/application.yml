@@ -3,6 +3,8 @@ nacos:
   product: product
   module: ["imService","user"]
 spring:
+  quartz:
+    auto-startup: false
   port: 22222
   redis:
     database: 0

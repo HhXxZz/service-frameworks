@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ComponentScan("org.hxz")
-@EnableAutoConfiguration
+@EnableAutoConfiguration(exclude = {org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration.class})
 public abstract class BaseRpcServer {
     private static final Logger logger = LogManager.getLogger(BaseRpcServer.class);
 

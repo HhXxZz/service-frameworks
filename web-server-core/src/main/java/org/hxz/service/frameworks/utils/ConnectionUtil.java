@@ -106,7 +106,7 @@ public enum  ConnectionUtil {
 //                }
 
 
-                File file = new File(Objects.requireNonNull(ConnectionUtil.class.getClassLoader().getResource("db.yaml")).getPath());
+                File file = new File(Objects.requireNonNull(ConnectionUtil.class.getClassLoader().getResource("db.yml")).getPath());
                 if(!file.exists()){
                     LOG.error("MISSING : db.properties !");
                     return;

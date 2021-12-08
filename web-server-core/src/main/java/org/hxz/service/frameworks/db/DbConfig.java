@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.MybatisXMLLanguageDriver;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import com.google.common.io.ByteStreams;
 import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.logging.log4j.LogManager;
@@ -18,6 +19,8 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Objects;
 
 /**
@@ -31,12 +34,20 @@ public class DbConfig {
     @Bean
     public DataSource getDataSource(){
         try {
-            File file = new File(Objects.requireNonNull(ConnectionUtil.class.getClassLoader().getResource("db.yaml")).getPath());
-            if(!file.exists()){
-                logger.error("MISSING : db.yaml !");
+            InputStream inputStream = DbConfig.class.getClassLoader().getResourceAsStream("db.yml");
+            if(inputStream == null){
+                logger.error("MISSING : db.yml !");
                 return null;
             }
-            return YamlShardingSphereDataSourceFactory.createDataSource(file);
+//            String path = url.getPath();
+//            logger.info("DataSource.path="+path);
+//            File file = new File(path);
+//            if(!file.exists()){
+//                logger.error("MISSING : db.yml !");
+//                return null;
+//            }
+            byte[] bytes = ByteStreams.toByteArray(inputStream);
+            return YamlShardingSphereDataSourceFactory.createDataSource(bytes);
         }catch (Exception e){
             logger.error(e);
         }

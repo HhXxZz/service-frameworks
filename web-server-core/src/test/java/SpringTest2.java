@@ -24,7 +24,7 @@ import java.util.List;
 //@Component
 @ComponentScan({"org.hxz"})
 @MapperScan("org.hxz.service.frameworks.dao")
-@EnableAutoConfiguration
+@EnableAutoConfiguration(exclude = {org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration.class})
 public class SpringTest2 {
 
     public static void main(String[] args) {
