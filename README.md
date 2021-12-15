@@ -19,5 +19,13 @@ springboot+netty+nacos的RPC 微服务框架
 # other
 使用springboot全家桶的功能，ioc，自动注入
 
+
+# mq
+使用kafka 作为mq
+
+# 数据同步
+使用阿里的canal，把mysql的数据同步到redis，
+
 # TODO
 seata分布式事务
+

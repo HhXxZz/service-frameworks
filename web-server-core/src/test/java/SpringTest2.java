@@ -1,6 +1,7 @@
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.hxz.service.frameworks.dao.User;
 import org.hxz.service.frameworks.dao.UserMapper;
+import org.hxz.service.frameworks.kafka.KafkaProducer;
 import org.hxz.service.frameworks.utils.AppContext;
 import org.hxz.service.frameworks.utils.GsonUtil;
 import org.hxz.service.frameworks.utils.RedisUtil;
@@ -40,10 +41,14 @@ public class SpringTest2 {
         Environment environment = AppContext.getBean(Environment.class);
 //        System.out.println(environment.getProperty("spring.port","2121"));
         String nacosModule = environment.getProperty("nacos.module","[\"module\"]");
-        System.out.println(nacosModule);
-        System.out.println(RedisUtil.set("aa","sosoosos"));
+//        System.out.println(nacosModule);
+//        System.out.println(RedisUtil.set("aa","sosoosos"));
+//
+//        System.out.println(RedisUtil.get("aa"));
 
-        System.out.println(RedisUtil.get("aa"));
+//        KafkaProducer producer = AppContext.getBean(KafkaProducer.class);
+//
+//        producer.send("发送消息！！！！");
 
 //        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(SpringTest2.class);
 //        UserMapper userMapper = context.getBean(UserMapper.class);
